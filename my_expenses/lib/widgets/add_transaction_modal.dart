@@ -237,6 +237,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       month: _getMonthName(txDate),
       week: _getWeekRange(txDate),
       source: 'app',
+      createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
 
     if (widget.existing == null) {

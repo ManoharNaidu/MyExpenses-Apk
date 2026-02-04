@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 enum TxType { income, expense }
 
 class TransactionModel {
@@ -62,7 +64,9 @@ class TransactionModel {
       'month': month,
       'week': week,
       'source': source,
-      'created_at': createdAt?.toIso8601String(),
+      'created_at': createdAt != null
+          ? DateFormat('yyyy-MM-dd HH:mm:ss+00').format(createdAt!.toUtc())
+          : null,
     };
     if (id != null) {
       map['id'] = id;
