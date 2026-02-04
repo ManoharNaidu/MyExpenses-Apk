@@ -9,68 +9,93 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final txs = TransactionRepository.all();
+    return StreamBuilder<List<TransactionModel>>(
+      stream: TransactionRepository.getTransactionsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+        final txs = snapshot.data ?? [];
 
-    // WEEKLY: group by weekStart (Mon)
-    final weekly = <DateTime, Map<String, double>>{};
-    for (final t in txs) {
-      final w = DateUtilsX.weekStartMonday(t.date);
-      weekly.putIfAbsent(w, () => {"Income": 0.0, "Expense": 0.0});
-      if (t.type == TxType.income) {
-        weekly[w]!["Income"] = weekly[w]!["Income"]! + t.amount;
-      } else {
-        weekly[w]!["Expense"] = weekly[w]!["Expense"]! + t.amount;
-      }
-    }
+        // WEEKLY: group by weekStart (Mon)
+        final weekly = <DateTime, Map<String, double>>{};
+        for (final t in txs) {
+          final w = DateUtilsX.weekStartMonday(t.date);
+          weekly.putIfAbsent(w, () => {"Income": 0.0, "Expense": 0.0});
+          if (t.type == TxType.income) {
+            weekly[w]!["Income"] = weekly[w]!["Income"]! + t.amount;
+          } else {
+            weekly[w]!["Expense"] = weekly[w]!["Expense"]! + t.amount;
+          }
+        }
 
-    final weeklyKeys = weekly.keys.toList()..sort();
-    final weeklyIncome = weeklyKeys.map((k) => weekly[k]!["Income"]!).toList();
-    final weeklyExpense = weeklyKeys.map((k) => weekly[k]!["Expense"]!).toList();
+        final weeklyKeys = weekly.keys.toList()..sort();
+        final weeklyIncome = weeklyKeys
+            .map((k) => weekly[k]!["Income"]!)
+            .toList();
+        final weeklyExpense = weeklyKeys
+            .map((k) => weekly[k]!["Expense"]!)
+            .toList();
 
-    // MONTHLY: group by yyyy-mm
-    final monthly = <String, Map<String, double>>{};
-    for (final t in txs) {
-      final m = DateUtilsX.yyyyMm(t.date);
-      monthly.putIfAbsent(m, () => {"Income": 0.0, "Expense": 0.0});
-      if (t.type == TxType.income) {
-        monthly[m]!["Income"] = monthly[m]!["Income"]! + t.amount;
-      } else {
-        monthly[m]!["Expense"] = monthly[m]!["Expense"]! + t.amount;
-      }
-    }
+        // MONTHLY: group by yyyy-mm
+        final monthly = <String, Map<String, double>>{};
+        for (final t in txs) {
+          final m = DateUtilsX.yyyyMm(t.date);
+          monthly.putIfAbsent(m, () => {"Income": 0.0, "Expense": 0.0});
+          if (t.type == TxType.income) {
+            monthly[m]!["Income"] = monthly[m]!["Income"]! + t.amount;
+          } else {
+            monthly[m]!["Expense"] = monthly[m]!["Expense"]! + t.amount;
+          }
+        }
 
-    final monthlyKeys = monthly.keys.toList()..sort();
-    final monthlyIncome = monthlyKeys.map((k) => monthly[k]!["Income"]!).toList();
-    final monthlyExpense = monthlyKeys.map((k) => monthly[k]!["Expense"]!).toList();
+        final monthlyKeys = monthly.keys.toList()..sort();
+        final monthlyIncome = monthlyKeys
+            .map((k) => monthly[k]!["Income"]!)
+            .toList();
+        final monthlyExpense = monthlyKeys
+            .map((k) => monthly[k]!["Expense"]!)
+            .toList();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Analytics")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Text("Weekly", style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            _barChart(
-              labels: weeklyKeys.map((d) => DateUtilsX.weekLabel(d)).toList(),
-              a: weeklyIncome,
-              b: weeklyExpense,
-              aName: "Income",
-              bName: "Expense",
+        return Scaffold(
+          appBar: AppBar(title: const Text("Analytics")),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ListView(
+              children: [
+                Text("Weekly", style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                _barChart(
+                  labels: weeklyKeys
+                      .map((d) => DateUtilsX.weekLabel(d))
+                      .toList(),
+                  a: weeklyIncome,
+                  b: weeklyExpense,
+                  aName: "Income",
+                  bName: "Expense",
+                ),
+                const SizedBox(height: 22),
+                Text("Monthly", style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                _barChart(
+                  labels: monthlyKeys,
+                  a: monthlyIncome,
+                  b: monthlyExpense,
+                  aName: "Income",
+                  bName: "Expense",
+                ),
+              ],
             ),
-            const SizedBox(height: 22),
-            Text("Monthly", style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            _barChart(
-              labels: monthlyKeys,
-              a: monthlyIncome,
-              b: monthlyExpense,
-              aName: "Income",
-              bName: "Expense",
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -83,7 +108,12 @@ class AnalyticsScreen extends StatelessWidget {
   }) {
     final n = labels.length;
     if (n == 0) {
-      return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text("No data yet.")));
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("No data yet."),
+        ),
+      );
     }
 
     final groups = <BarChartGroupData>[];
@@ -92,8 +122,16 @@ class AnalyticsScreen extends StatelessWidget {
         BarChartGroupData(
           x: i,
           barRods: [
-            BarChartRodData(toY: a[i], width: 8, borderRadius: BorderRadius.circular(6)),
-            BarChartRodData(toY: b[i], width: 8, borderRadius: BorderRadius.circular(6)),
+            BarChartRodData(
+              toY: a[i],
+              width: 8,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            BarChartRodData(
+              toY: b[i],
+              width: 8,
+              borderRadius: BorderRadius.circular(6),
+            ),
           ],
         ),
       );
@@ -108,19 +146,29 @@ class AnalyticsScreen extends StatelessWidget {
             BarChartData(
               barGroups: groups,
               titlesData: FlTitlesData(
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+                ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     interval: n > 8 ? 2 : 1,
                     getTitlesWidget: (v, meta) {
                       final idx = v.toInt();
-                      if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
+                      if (idx < 0 || idx >= labels.length)
+                        return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.only(top: 6),
-                        child: Text(labels[idx], style: const TextStyle(fontSize: 10)),
+                        child: Text(
+                          labels[idx],
+                          style: const TextStyle(fontSize: 10),
+                        ),
                       );
                     },
                   ),

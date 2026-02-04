@@ -15,14 +15,22 @@ class AddTransactionModal extends StatefulWidget {
 class _AddTransactionModalState extends State<AddTransactionModal> {
   late TxType type;
   late String category;
-  String payment = "Card";
   DateTime date = DateTime.now();
+  DateTime? originalDate;
 
   final amountCtrl = TextEditingController();
-  final notesCtrl = TextEditingController();
+  final descriptionCtrl = TextEditingController();
 
   final incomeCats = const ["Transfer", "IveHub", "Dash/Uber", "Part-Time"];
-  final expenseCats = const ["RoomRent", "Scooty Rent", "PAC", "Groceries", "Petrol", "Food", "Misc"];
+  final expenseCats = const [
+    "RoomRent",
+    "Scooty Rent",
+    "PAC",
+    "Groceries",
+    "Petrol",
+    "Food",
+    "Misc",
+  ];
 
   @override
   void initState() {
@@ -30,20 +38,22 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
     final e = widget.existing;
     type = e?.type ?? TxType.expense;
-    category = e?.category ?? (type == TxType.income ? incomeCats.first : expenseCats.first);
-    payment = e?.paymentMethod ?? "Card";
+    category =
+        e?.category ??
+        (type == TxType.income ? incomeCats.first : expenseCats.first);
     date = e?.date ?? DateTime.now();
+    originalDate = e?.originalDate ?? date;
 
     if (e != null) {
       amountCtrl.text = e.amount.toStringAsFixed(2);
-      notesCtrl.text = e.notes;
+      descriptionCtrl.text = e!.description ?? '';
     }
   }
 
   @override
   void dispose() {
     amountCtrl.dispose();
-    notesCtrl.dispose();
+    descriptionCtrl.dispose();
     super.dispose();
   }
 
@@ -62,8 +72,10 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.existing == null ? "Add Transaction" : "Edit Transaction",
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              widget.existing == null ? "Add Transaction" : "Edit Transaction",
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
 
             // amount
@@ -109,22 +121,11 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
             // category dropdown
             DropdownButtonFormField<String>(
               value: category,
-              items: cats.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              items: cats
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
               onChanged: (v) => setState(() => category = v ?? category),
               decoration: const InputDecoration(labelText: "Category"),
-            ),
-
-            const SizedBox(height: 10),
-
-            // payment
-            DropdownButtonFormField<String>(
-              value: payment,
-              items: const [
-                DropdownMenuItem(value: "Card", child: Text("Card")),
-                DropdownMenuItem(value: "Cash", child: Text("Cash")),
-              ],
-              onChanged: (v) => setState(() => payment = v ?? payment),
-              decoration: const InputDecoration(labelText: "Payment Method"),
             ),
 
             const SizedBox(height: 10),
@@ -146,18 +147,40 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
               },
             ),
 
-            // notes
+            const SizedBox(height: 10),
+
+            // original date picker
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text("Original Date (optional)"),
+              subtitle: originalDate != null
+                  ? Text(
+                      "${originalDate!.day}/${originalDate!.month}/${originalDate!.year}",
+                    )
+                  : const Text("Not set"),
+              trailing: const Icon(Icons.calendar_month_rounded),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  firstDate: DateTime(2024, 1, 1),
+                  lastDate: DateTime(2035, 12, 31),
+                  initialDate: originalDate ?? date,
+                );
+                if (picked != null) setState(() => originalDate = picked);
+              },
+            ),
+
+            // description
             TextField(
-              controller: notesCtrl,
-              decoration: const InputDecoration(labelText: "Notes (optional)"),
+              controller: descriptionCtrl,
+              decoration: const InputDecoration(
+                labelText: "Description (optional)",
+              ),
             ),
 
             const SizedBox(height: 16),
 
-            FilledButton(
-              onPressed: _save,
-              child: const Text("Save"),
-            ),
+            FilledButton(onPressed: _save, child: const Text("Save")),
             const SizedBox(height: 10),
           ],
         ),
@@ -165,7 +188,11 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
     );
   }
 
-  Widget _pill({required String label, required bool selected, required VoidCallback onTap}) {
+  Widget _pill({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -173,10 +200,18 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: selected ? Theme.of(context).colorScheme.primary : Colors.white,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.white,
           border: Border.all(color: Colors.black12),
         ),
-        child: Text(label, style: TextStyle(color: selected ? Colors.white : Colors.black87, fontWeight: FontWeight.w800)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
     );
   }
@@ -184,18 +219,24 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   Future<void> _save() async {
     final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid amount")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter a valid amount")));
       return;
     }
 
+    final txDate = DateTime(date.year, date.month, date.day);
     final tx = TransactionModel(
-      id: widget.existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-      date: DateTime(date.year, date.month, date.day),
+      id: widget.existing?.id,
+      date: txDate,
+      originalDate: originalDate,
       type: type,
       category: category,
       amount: amount,
-      notes: notesCtrl.text.trim(),
-      paymentMethod: payment,
+      description: descriptionCtrl.text.trim(),
+      month: _getMonthName(txDate),
+      week: _getWeekRange(txDate),
+      source: 'app',
     );
 
     if (widget.existing == null) {
@@ -206,5 +247,29 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
     widget.onSaved();
     if (mounted) Navigator.pop(context);
+  }
+
+  String _getMonthName(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[date.month - 1];
+  }
+
+  String _getWeekRange(DateTime date) {
+    final startOfWeek = date.subtract(Duration(days: date.weekday - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+    return '${startOfWeek.day}-${endOfWeek.day}';
   }
 }

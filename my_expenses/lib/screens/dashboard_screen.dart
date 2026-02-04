@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-
-import '../data/hive_boxes.dart';
 import '../models/transaction_model.dart';
 import '../utils/date_utils.dart';
 import '../widgets/add_transaction_modal.dart';
@@ -14,12 +11,20 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final box = Hive.box<TransactionModel>(HiveBoxes.transactions);
-
-    return ValueListenableBuilder(
-      valueListenable: box.listenable(),
-      builder: (context, _, __) {
-        final txs = TransactionRepository.all();
+    return StreamBuilder<List<TransactionModel>>(
+      stream: TransactionRepository.getTransactionsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+        final txs = snapshot.data ?? [];
 
         final now = DateTime.now();
         final todayKey = DateTime(now.year, now.month, now.day);
@@ -27,19 +32,26 @@ class DashboardScreen extends StatelessWidget {
         final weekEnd = DateUtilsX.weekEndSunday(now);
         final monthKey = DateTime(now.year, now.month, 1);
 
-        double sumWhere(bool Function(TransactionModel t) pred) =>
-            txs.where(pred).fold(0.0, (a, b) => a + (b.type == TxType.expense ? -b.amount : b.amount));
+        double sumWhere(bool Function(TransactionModel t) pred) => txs
+            .where(pred)
+            .fold(
+              0.0,
+              (a, b) => a + (b.type == TxType.expense ? -b.amount : b.amount),
+            );
 
-        double incomeWhere(bool Function(TransactionModel t) pred) =>
-            txs.where((t) => pred(t) && t.type == TxType.income).fold(0.0, (a, b) => a + b.amount);
+        double incomeWhere(bool Function(TransactionModel t) pred) => txs
+            .where((t) => pred(t) && t.type == TxType.income)
+            .fold(0.0, (a, b) => a + b.amount);
 
-        double expenseWhere(bool Function(TransactionModel t) pred) =>
-            txs.where((t) => pred(t) && t.type == TxType.expense).fold(0.0, (a, b) => a + b.amount);
+        double expenseWhere(bool Function(TransactionModel t) pred) => txs
+            .where((t) => pred(t) && t.type == TxType.expense)
+            .fold(0.0, (a, b) => a + b.amount);
 
         bool isToday(TransactionModel t) =>
             DateTime(t.date.year, t.date.month, t.date.day) == todayKey;
 
-        bool isThisWeek(TransactionModel t) => !t.date.isBefore(weekStart) && !t.date.isAfter(weekEnd);
+        bool isThisWeek(TransactionModel t) =>
+            !t.date.isBefore(weekStart) && !t.date.isAfter(weekEnd);
 
         bool isThisMonth(TransactionModel t) =>
             t.date.year == monthKey.year && t.date.month == monthKey.month;
@@ -114,19 +126,31 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text("Recent", style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                ...txs.take(8).map((t) => Card(
-                      child: ListTile(
-                        title: Text(t.category, style: const TextStyle(fontWeight: FontWeight.w800)),
-                        subtitle: Text("${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}"),
-                        trailing: Text(
-                          (t.type == TxType.income ? "+" : "-") + t.amount.toStringAsFixed(2),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: t.type == TxType.income ? Colors.green.shade700 : Colors.red.shade700,
+                ...txs
+                    .take(10)
+                    .map(
+                      (t) => Card(
+                        child: ListTile(
+                          title: Text(
+                            t.category,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          subtitle: Text(
+                            "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
+                          ),
+                          trailing: Text(
+                            (t.type == TxType.income ? "+" : "-") +
+                                t.amount.toStringAsFixed(2),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: t.type == TxType.income
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                            ),
                           ),
                         ),
                       ),
-                    )),
+                    ),
               ],
             ),
           ),

@@ -24,12 +24,26 @@ class TransactionTile extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: (isIncome ? Colors.green : Colors.red).withOpacity(0.12),
-          child: Icon(isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-              color: isIncome ? Colors.green : Colors.red),
+          backgroundColor: (isIncome ? Colors.green : Colors.red).withOpacity(
+            0.12,
+          ),
+          child: Icon(
+            isIncome
+                ? Icons.arrow_downward_rounded
+                : Icons.arrow_upward_rounded,
+            color: isIncome ? Colors.green : Colors.red,
+          ),
         ),
-        title: Text(tx.category, style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.textDark)),
-        subtitle: Text('$date • ${tx.paymentMethod}${tx.notes.isNotEmpty ? " • ${tx.notes}" : ""}'),
+        title: Text(
+          tx.category,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: AppTheme.textDark,
+          ),
+        ),
+        subtitle: Text(
+          '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${(tx.description ?? '').isNotEmpty ? " • ${tx.description}" : ""}',
+        ),
         trailing: Text(
           amt,
           style: TextStyle(

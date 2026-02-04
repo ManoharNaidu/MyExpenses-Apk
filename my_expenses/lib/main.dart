@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/theme.dart';
-import 'data/hive_boxes.dart';
-import 'models/transaction_model.dart';
+import 'data/supabase_client.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/analytics_screen.dart';
@@ -11,11 +10,7 @@ import 'screens/analytics_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Hive.initFlutter();
-  Hive.registerAdapter(TransactionModelAdapter());
-  Hive.registerAdapter(TxTypeAdapter());
-
-  await Hive.openBox<TransactionModel>(HiveBoxes.transactions);
+  await SupabaseClientManager.initialize();
 
   runApp(const MyExpensesApp());
 }

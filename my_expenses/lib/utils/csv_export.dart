@@ -5,20 +5,28 @@ import 'date_utils.dart';
 
 class CsvExport {
   static Future<void> exportTransactions(List<TransactionModel> txs) async {
-    final header = ['Date','Month','Week','Type','Category','Amount','PaymentMethod','Notes'];
-    final rows = txs.map((t) => [
-      DateUtilsX.yyyyMmDd(t.date),
-      DateUtilsX.monthLabel(t.date),
-      DateUtilsX.weekLabel(t.date),
-      t.type == TxType.income ? 'Income' : 'Expense',
-      t.category,
-      t.amount.toStringAsFixed(2),
-      t.paymentMethod,
-      t.notes,
-    ]);
+    final header = [
+      'Date',
+      'Month',
+      'Week',
+      'Type',
+      'Category',
+      'Amount',
+      'Description',
+    ];
+    final rows = txs.map(
+      (t) => [
+        DateUtilsX.yyyyMmDd(t.date),
+        DateUtilsX.monthLabel(t.date),
+        DateUtilsX.weekLabel(t.date),
+        t.type == TxType.income ? 'Income' : 'Expense',
+        t.category,
+        t.amount.toStringAsFixed(2),
+        t.description,
+      ],
+    );
 
-    final csv = StringBuffer()
-      ..writeln(header.join(','));
+    final csv = StringBuffer()..writeln(header.join(','));
     for (final r in rows) {
       csv.writeln(r.map(_escape).join(','));
     }
@@ -32,9 +40,10 @@ class CsvExport {
     );
   }
 
-  static String _escape(String v) {
-    final needs = v.contains(',') || v.contains('"') || v.contains('\n');
-    if (!needs) return v;
-    return '"${v.replaceAll('"', '""')}"';
+  static String _escape(String? v) {
+    final val = v ?? '';
+    final needs = val.contains(',') || val.contains('"') || val.contains('\n');
+    if (!needs) return val;
+    return '"${val.replaceAll('"', '""')}"';
   }
 }
