@@ -46,7 +46,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
     if (e != null) {
       amountCtrl.text = e.amount.toStringAsFixed(2);
-      descriptionCtrl.text = e!.description ?? '';
+      descriptionCtrl.text = e.description ?? '';
     }
   }
 
