@@ -79,7 +79,6 @@ dart --version
 
 ```bash
 git clone https://github.com/ManoharNaidu/MyExpenses-Apk
-cd my_expenses
 ```
 
 ### 2. Install Flutter Dependencies
