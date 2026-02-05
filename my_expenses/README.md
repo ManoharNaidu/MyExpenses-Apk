@@ -78,7 +78,7 @@ dart --version
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/my_expenses.git
+git clone https://github.com/ManoharNaidu/MyExpenses-Apk
 cd my_expenses
 ```
 
@@ -489,9 +489,7 @@ Planned features for upcoming releases:
 ## 📞 Support
 
 For support and questions:
-- 📧 Email: support@myexpenses.com
-- 💬 Discord: [Join Community](https://discord.gg/yourserver)
-- 🐦 Twitter: [@myexpenses](https://twitter.com/yourhandle)
+- 📧 Email: bheesettimanohar27@gmail.com
 
 ---
 
