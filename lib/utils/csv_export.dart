@@ -65,7 +65,7 @@ class CsvExport {
           subject: 'Transactions Export',
         );
       } catch (e) {
-        print('Error exporting CSV on mobile: $e');
+   
       }
     }
   }
