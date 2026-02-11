@@ -162,13 +162,15 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
-                  firstDate: DateTime(2024, 1, 1),
+                  firstDate: DateTime(2020, 1, 1),
                   lastDate: DateTime(2035, 12, 31),
                   initialDate: originalDate ?? date,
                 );
                 if (picked != null) setState(() => originalDate = picked);
               },
             ),
+
+            const SizedBox(height: 10),
 
             // description
             TextField(
@@ -226,51 +228,37 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
     }
 
     final txDate = DateTime(date.year, date.month, date.day);
+    final origDate = originalDate != null
+        ? DateTime(originalDate!.year, originalDate!.month, originalDate!.day)
+        : txDate;
+
     final tx = TransactionModel(
       id: widget.existing?.id,
       date: txDate,
-      originalDate: originalDate,
+      originalDate: origDate,
       type: type,
       category: category,
       amount: amount,
-      description: descriptionCtrl.text.trim(),
-      month: _getMonthName(txDate),
-      week: _getWeekRange(txDate),
-      source: 'app',
-      createdAt: widget.existing?.createdAt ?? DateTime.now(),
+      description: descriptionCtrl.text.trim().isEmpty
+          ? null
+          : descriptionCtrl.text.trim(),
     );
 
-    if (widget.existing == null) {
-      await TransactionRepository.add(tx);
-    } else {
-      await TransactionRepository.update(tx);
+    try {
+      if (widget.existing == null) {
+        await TransactionRepository.add(tx);
+      } else {
+        await TransactionRepository.update(tx);
+      }
+
+      widget.onSaved();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
-
-    widget.onSaved();
-    if (mounted) Navigator.pop(context);
-  }
-
-  String _getMonthName(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[date.month - 1];
-  }
-
-  String _getWeekRange(DateTime date) {
-    final startOfWeek = date.subtract(Duration(days: date.weekday - 1));
-    final endOfWeek = startOfWeek.add(Duration(days: 6));
-    return '${startOfWeek.day}-${endOfWeek.day}';
   }
 }

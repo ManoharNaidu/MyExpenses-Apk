@@ -4,7 +4,6 @@ import '../utils/date_utils.dart';
 import '../widgets/add_transaction_modal.dart';
 import '../widgets/summary_card.dart';
 import '../data/transaction_repository.dart';
-import '../utils/csv_export.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -15,14 +14,10 @@ class DashboardScreen extends StatelessWidget {
       stream: TransactionRepository.getTransactionsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(child: Text('Error: ${snapshot.error}')),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
         final txs = snapshot.data ?? [];
 
@@ -64,16 +59,6 @@ class DashboardScreen extends StatelessWidget {
         final weekExpense = expenseWhere(isThisWeek);
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text("My Expenses"),
-            actions: [
-              IconButton(
-                tooltip: "Export CSV",
-                onPressed: () async => CsvExport.exportTransactions(txs),
-                icon: const Icon(Icons.download_rounded),
-              ),
-            ],
-          ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => showModalBottomSheet(
               context: context,

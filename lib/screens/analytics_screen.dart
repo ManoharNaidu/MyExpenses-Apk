@@ -20,14 +20,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       stream: TransactionRepository.getTransactionsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(child: Text('Error: ${snapshot.error}')),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
         final txs = snapshot.data ?? [];
 
@@ -71,94 +67,91 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             .map((k) => monthly[k]!["Expense"]!)
             .toList();
 
-        return Scaffold(
-          appBar: AppBar(title: const Text("Analytics")),
-          body: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                // Tab Selector
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedTab = 0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              // Tab Selector
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedTab = 0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _selectedTab == 0
+                                ? Colors.blue
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "Weekly",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
                               color: _selectedTab == 0
-                                  ? Colors.blue
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              "Weekly",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: _selectedTab == 0
-                                    ? Colors.white
-                                    : Colors.black54,
-                              ),
+                                  ? Colors.white
+                                  : Colors.black54,
                             ),
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedTab = 1),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedTab = 1),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _selectedTab == 1
+                                ? Colors.blue
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "Monthly",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
                               color: _selectedTab == 1
-                                  ? Colors.blue
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              "Monthly",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: _selectedTab == 1
-                                    ? Colors.white
-                                    : Colors.black54,
-                              ),
+                                  ? Colors.white
+                                  : Colors.black54,
                             ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                // Chart
-                Expanded(
-                  child: _selectedTab == 0
-                      ? _barChart(
-                          labels: weeklyKeys
-                              .map((d) => DateUtilsX.weekLabel(d))
-                              .toList(),
-                          a: weeklyIncome,
-                          b: weeklyExpense,
-                          aName: "Income",
-                          bName: "Expense",
-                        )
-                      : _barChart(
-                          labels: monthlyKeys,
-                          a: monthlyIncome,
-                          b: monthlyExpense,
-                          aName: "Income",
-                          bName: "Expense",
-                        ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              // Chart
+              Expanded(
+                child: _selectedTab == 0
+                    ? _barChart(
+                        labels: weeklyKeys
+                            .map((d) => DateUtilsX.weekLabel(d))
+                            .toList(),
+                        a: weeklyIncome,
+                        b: weeklyExpense,
+                        aName: "Income",
+                        bName: "Expense",
+                      )
+                    : _barChart(
+                        labels: monthlyKeys,
+                        a: monthlyIncome,
+                        b: monthlyExpense,
+                        aName: "Income",
+                        bName: "Expense",
+                      ),
+              ),
+            ],
           ),
         );
       },

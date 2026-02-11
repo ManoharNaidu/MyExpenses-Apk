@@ -22,14 +22,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       stream: TransactionRepository.getTransactionsStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(child: Text('Error: ${snapshot.error}')),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
         final all = snapshot.data ?? [];
 
@@ -58,7 +54,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         }).toList();
 
         return Scaffold(
-          appBar: AppBar(title: const Text("History")),
           floatingActionButton: FloatingActionButton(
             onPressed: () => showModalBottomSheet(
               context: context,
