@@ -3,6 +3,8 @@ import '../../screens/dashboard_screen.dart';
 import '../../screens/history_screen.dart';
 import '../../screens/analytics_screen.dart';
 import 'settings_page.dart';
+import '../../data/transaction_repository.dart';
+import '../../utils/csv_export.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -13,6 +15,31 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int index = 0;
+
+  Future<void> _exportTransactions() async {
+    try {
+      final txs = await TransactionRepository.fetchAll();
+      if (!mounted) return;
+
+      if (txs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No transactions to export")),
+        );
+        return;
+      }
+
+      await CsvExport.exportTransactions(txs);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Export started successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Export failed: $e")));
+    }
+  }
 
   final pages = [
     const DashboardScreen(),
@@ -33,9 +60,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 // Export CSV button only on Dashboard
                 IconButton(
                   tooltip: "Export CSV",
-                  onPressed: () {
-                    // This will be handled by DashboardScreen
-                  },
+                  onPressed: _exportTransactions,
                   icon: const Icon(Icons.download_rounded),
                 ),
               ]

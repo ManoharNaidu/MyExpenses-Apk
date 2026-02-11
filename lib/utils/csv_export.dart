@@ -1,9 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_saver/file_saver.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../models/transaction_model.dart';
 import 'date_utils.dart';
 
@@ -42,32 +38,13 @@ class CsvExport {
     final String fileName =
         'transactions_${DateTime.now().millisecondsSinceEpoch}';
 
-    // 3. Platform Specific Logic
-    if (kIsWeb) {
-      // WEB: Standard browser download
-      await FileSaver.instance.saveFile(
-        name: fileName,
-        bytes: bytes,
-        ext: 'csv',
-        mimeType: MimeType.csv,
-      );
-    } else {
-      // ANDROID/APK: Save to temp storage and trigger Share Sheet
-      try {
-        final tempDir = await getTemporaryDirectory();
-        final file = await File('${tempDir.path}/$fileName.csv').create();
-        await file.writeAsBytes(bytes);
-
-        // This allows the user to save to "Downloads", send to Email, or Drive
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          text: 'Exported Transactions CSV',
-          subject: 'Transactions Export',
-        );
-      } catch (e) {
-   
-      }
-    }
+    // Cross-platform save (web + mobile + desktop)
+    await FileSaver.instance.saveFile(
+      name: fileName,
+      bytes: bytes,
+      ext: 'csv',
+      mimeType: MimeType.csv,
+    );
   }
 
   static String _escape(String? v) {

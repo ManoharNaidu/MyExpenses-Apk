@@ -169,6 +169,11 @@ class TransactionRepository {
     return _streamController.stream;
   }
 
+  /// Manually refresh transactions and push latest state to listeners.
+  static Future<void> refresh() async {
+    await _fetchAndEmit();
+  }
+
   /// Dispose resources
   static void dispose() {
     _stopPolling();

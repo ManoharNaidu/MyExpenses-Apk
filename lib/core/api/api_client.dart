@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../storage/secure_storage.dart';
@@ -167,6 +168,74 @@ class ApiClient {
       debugPrint("❌ API Error: $e");
       debugPrint("📍 Stack trace: $stackTrace");
       // Return error response instead of throwing
+      return http.Response('{"error": "$e"}', 500);
+    }
+  }
+
+  static Future<http.Response> uploadFile(
+    String path, {
+    String fieldName = "file",
+    String? filePath,
+    Uint8List? fileBytes,
+    String? fileName,
+    bool requiresAuth = true,
+    Map<String, String>? fields,
+  }) async {
+    try {
+      final token = requiresAuth ? await SecureStorage.readToken() : null;
+
+      if (requiresAuth && token == null) {
+        debugPrint("❌ No auth token found!");
+        return http.Response('{"error": "No authentication token"}', 401);
+      }
+
+      if (filePath == null && fileBytes == null) {
+        return http.Response('{"error": "No file provided"}', 400);
+      }
+
+      final url = "$_baseUrl$path";
+      debugPrint("🌐 UPLOAD $url");
+
+      final request = http.MultipartRequest("POST", Uri.parse(url));
+      if (token != null) {
+        request.headers["Authorization"] = "Bearer $token";
+        debugPrint("🔑 Token: ${token.substring(0, 20)}...");
+      } else {
+        debugPrint("🔓 Public upload request (no token)");
+      }
+
+      if (fields != null && fields.isNotEmpty) {
+        request.fields.addAll(fields);
+      }
+
+      if (fileBytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            fieldName,
+            fileBytes,
+            filename: fileName ?? "upload.pdf",
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            fieldName,
+            filePath!,
+            filename: fileName,
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint("📥 Upload response ${response.statusCode}: ${response.body}");
+      return response;
+    } catch (e, stackTrace) {
+      debugPrint("❌ Upload API Error: $e");
+      debugPrint("📍 Stack trace: $stackTrace");
       return http.Response('{"error": "$e"}', 500);
     }
   }
