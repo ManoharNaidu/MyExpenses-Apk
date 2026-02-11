@@ -62,7 +62,7 @@ class AuthProvider extends ChangeNotifier {
       final res = await ApiClient.post("/auth/login", {
         "email": email,
         "password": password,
-      });
+      }, requiresAuth: false);
 
       debugPrint("📥 Login response: ${res.statusCode}");
 
@@ -92,7 +92,7 @@ class AuthProvider extends ChangeNotifier {
         "name": name,
         "email": email,
         "password": password,
-      });
+      }, requiresAuth: false);
 
       if (res.statusCode == 200 && res.body.isNotEmpty) {
         final data = jsonDecode(res.body);

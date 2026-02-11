@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../data/transaction_repository.dart';
+import '../core/auth/auth_provider.dart';
 
 class AddTransactionModal extends StatefulWidget {
   final TransactionModel? existing;
@@ -59,7 +61,13 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
   @override
   Widget build(BuildContext context) {
-    final cats = type == TxType.income ? incomeCats : expenseCats;
+    final selectedUserCats = context.watch<AuthProvider>().state.userCategories ?? [];
+    final expenseOptions = selectedUserCats.isNotEmpty
+        ? selectedUserCats
+        : expenseCats;
+    final cats = type == TxType.income ? incomeCats : expenseOptions;
+    final selectedCategory = cats.contains(category) ? category : cats.first;
+    category = selectedCategory;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -110,7 +118,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                   selected: type == TxType.expense,
                   onTap: () => setState(() {
                     type = TxType.expense;
-                    category = expenseCats.first;
+                    category = expenseOptions.first;
                   }),
                 ),
               ],
@@ -120,7 +128,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             // category dropdown
             DropdownButtonFormField<String>(
-              value: category,
+              value: selectedCategory,
               items: cats
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),

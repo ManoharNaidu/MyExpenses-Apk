@@ -7,23 +7,31 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ApiClient {
   static String get _baseUrl => dotenv.env['API_URL'] ?? '';
 
-  static Future<http.Response> post(String path, Map body) async {
+  static Future<http.Response> post(
+    String path,
+    Map body, {
+    bool requiresAuth = true,
+  }) async {
     try {
-      final token = await SecureStorage.readToken();
+      final token = requiresAuth ? await SecureStorage.readToken() : null;
 
-      if (token == null) {
+      if (requiresAuth && token == null) {
         debugPrint("❌ No auth token found!");
         return http.Response('{"error": "No authentication token"}', 401);
       }
 
-      final headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      };
+      final headers = <String, String>{"Content-Type": "application/json"};
+      if (token != null) {
+        headers["Authorization"] = "Bearer $token";
+      }
 
       final url = "$_baseUrl$path";
       debugPrint("🌐 POST $url");
-      debugPrint("🔑 Token: ${token.substring(0, 20)}...");
+      if (token != null) {
+        debugPrint("🔑 Token: ${token.substring(0, 20)}...");
+      } else {
+        debugPrint("🔓 Public request (no token)");
+      }
       debugPrint("📦 Body: ${jsonEncode(body)}");
 
       final response = await http

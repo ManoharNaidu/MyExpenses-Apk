@@ -31,10 +31,12 @@ class _AuthPageState extends State<AuthPage> {
                     color: AppTheme.accent.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    size: 48,
-                    color: AppTheme.accentDark,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Image.asset(
+                      "assets/icon/icon2.png",
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
