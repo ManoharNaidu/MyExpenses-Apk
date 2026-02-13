@@ -1,10 +1,26 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../models/transaction_model.dart';
 import 'date_utils.dart';
 
+class CsvExportResult {
+  final String filePath;
+  final bool openedShareSheet;
+
+  const CsvExportResult({
+    required this.filePath,
+    required this.openedShareSheet,
+  });
+}
+
 class CsvExport {
-  static Future<void> exportTransactions(List<TransactionModel> txs) async {
+  static Future<CsvExportResult> exportTransactions(
+    List<TransactionModel> txs,
+  ) async {
     // 1. Prepare Data
     final header = [
       'Date',
@@ -38,12 +54,34 @@ class CsvExport {
     final String fileName =
         'transactions_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Cross-platform save (web + mobile + desktop)
-    await FileSaver.instance.saveFile(
-      name: fileName,
-      bytes: bytes,
-      ext: 'csv',
-      mimeType: MimeType.csv,
+    if (kIsWeb) {
+      await FileSaver.instance.saveFile(
+        name: fileName,
+        bytes: bytes,
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+      return const CsvExportResult(
+        filePath: 'browser-download',
+        openedShareSheet: false,
+      );
+    }
+
+    await Share.shareXFiles(
+      [
+        XFile.fromData(
+          Uint8List.fromList(bytes),
+          mimeType: 'text/csv',
+          name: '$fileName.csv',
+        ),
+      ],
+      text: 'My Expenses export CSV',
+      subject: 'transactions export',
+    );
+
+    return const CsvExportResult(
+      filePath: 'shared-via-sheet',
+      openedShareSheet: true,
     );
   }
 

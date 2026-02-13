@@ -26,7 +26,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       stream: TransactionRepository.getTransactionsStream(),
       initialData: TransactionRepository.currentTransactions,
       builder: (context, snapshot) {
-        if ((snapshot.data == null || snapshot.data!.isEmpty) &&
+        if (snapshot.data == null &&
             snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }

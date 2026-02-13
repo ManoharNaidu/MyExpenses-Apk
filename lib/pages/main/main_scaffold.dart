@@ -83,10 +83,16 @@ class _MainScaffoldState extends State<MainScaffold> {
         return;
       }
 
-      await CsvExport.exportTransactions(txs);
+      final result = await CsvExport.exportTransactions(txs);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Export started successfully")),
+        SnackBar(
+          content: Text(
+            result.openedShareSheet
+                ? "Export ready. Choose where to save/share the CSV."
+                : "Export started successfully",
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

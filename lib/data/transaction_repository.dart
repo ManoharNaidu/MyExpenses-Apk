@@ -295,9 +295,21 @@ class TransactionRepository {
   }
 
   static Future<void> delete(String id) async {
-    final response = await ApiClient.delete('/transaction/$id');
+    final response = await ApiClient.delete('/transactions/$id');
     if (response.statusCode == 200 || response.statusCode == 204) {
-      await _refreshLoadedWindow();
+      final beforeCount = _transactions.length;
+      _transactions.removeWhere((tx) => tx.id == id);
+      final didRemove = _transactions.length < beforeCount;
+
+      if (didRemove) {
+        _offset = _transactions.length;
+        _emitCurrent();
+        await _saveToCache();
+      }
+
+      // Sync in background to avoid stale pagination/cached windows.
+      unawaited(_refreshLoadedWindow());
+
       await NotificationService.show(
         id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
         title: 'Transaction deleted',
@@ -311,7 +323,17 @@ class TransactionRepository {
   static Future<void> update(TransactionModel tx) async {
     final response = await ApiClient.put('/transactions/${tx.id}', tx.toJson());
     if (response.statusCode == 200) {
-      await _refreshLoadedWindow();
+      if (tx.id != null) {
+        final index = _transactions.indexWhere((item) => item.id == tx.id);
+        if (index != -1) {
+          _transactions[index] = tx;
+          _emitCurrent();
+          await _saveToCache();
+        }
+      }
+
+      // Sync in background to keep list in-line with backend ordering/data.
+      unawaited(_refreshLoadedWindow());
       return;
     }
     throw Exception('Failed to update transaction: ${response.body}');
