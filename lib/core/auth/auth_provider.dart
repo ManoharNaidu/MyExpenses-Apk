@@ -6,15 +6,81 @@ import 'auth_state.dart';
 import '../../data/transaction_repository.dart';
 
 class AuthProvider extends ChangeNotifier {
+  static const _profileKey = 'auth_profile';
+
   AuthState _state = AuthState.initial();
   AuthState get state => _state;
 
+  AuthState _copyState({
+    bool? isLoading,
+    bool? isLoggedIn,
+    bool? isOnboarded,
+    String? userId,
+    String? userEmail,
+    String? userName,
+    List<String>? userCategories,
+  }) {
+    return AuthState(
+      isLoading: isLoading ?? _state.isLoading,
+      isLoggedIn: isLoggedIn ?? _state.isLoggedIn,
+      isOnboarded: isOnboarded ?? _state.isOnboarded,
+      userId: userId ?? _state.userId,
+      userEmail: userEmail ?? _state.userEmail,
+      userName: userName ?? _state.userName,
+      userCategories: userCategories ?? _state.userCategories,
+    );
+  }
+
+  Future<void> _saveProfileCache() async {
+    final payload = {
+      'is_onboarded': _state.isOnboarded,
+      'id': _state.userId,
+      'email': _state.userEmail,
+      'name': _state.userName,
+      'categories': _state.userCategories ?? <String>[],
+    };
+    await SecureStorage.writeString(_profileKey, jsonEncode(payload));
+  }
+
+  Future<bool> _restoreProfileCache() async {
+    final raw = await SecureStorage.readString(_profileKey);
+    if (raw == null || raw.isEmpty) return false;
+
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final categories = data['categories'];
+      final categoriesList = categories is List
+          ? categories.map((e) => e.toString()).toList()
+          : <String>[];
+
+      _state = AuthState(
+        isLoading: false,
+        isLoggedIn: true,
+        isOnboarded: data['is_onboarded'] ?? false,
+        userId: data['id']?.toString(),
+        userEmail: data['email']?.toString(),
+        userName: data['name']?.toString(),
+        userCategories: categoriesList,
+      );
+      TransactionRepository.setCurrentUserId(_state.userId);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> loadSession() async {
+    _state = _copyState(isLoading: true);
+    notifyListeners();
+
     try {
       debugPrint("🔄 Loading session...");
       final token = await SecureStorage.readToken();
       if (token == null) {
         debugPrint("⚠️ No token found, user not logged in");
+        _state = AuthState.initial().copyWith(isLoading: false);
+        notifyListeners();
         return;
       }
 
@@ -32,6 +98,7 @@ class AuthProvider extends ChangeNotifier {
             : <String>[];
 
         _state = AuthState(
+          isLoading: false,
           isLoggedIn: true,
           isOnboarded: data["is_onboarded"] ?? false,
           userId: data["id"]?.toString(),
@@ -46,13 +113,23 @@ class AuthProvider extends ChangeNotifier {
         debugPrint(
           "✅ Session loaded - userId: ${_state.userId}, name: ${_state.userName}, isOnboarded: ${_state.isOnboarded}",
         );
+        await _saveProfileCache();
         notifyListeners();
       } else {
         debugPrint("❌ Failed to load session: ${res.statusCode}");
+        final restored = await _restoreProfileCache();
+        if (!restored) {
+          _state = AuthState.initial().copyWith(isLoading: false);
+          notifyListeners();
+        }
       }
     } catch (e) {
       debugPrint("❌ Error loading session: $e");
-      // If session load fails, user stays logged out
+      final restored = await _restoreProfileCache();
+      if (!restored) {
+        _state = AuthState.initial().copyWith(isLoading: false);
+        notifyListeners();
+      }
     }
   }
 
@@ -86,7 +163,11 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> register(String name, String email, String password) async {
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
     try {
       final res = await ApiClient.post("/auth/register", {
         "name": name,
@@ -109,8 +190,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     await SecureStorage.clear();
+    await SecureStorage.deleteKey(_profileKey);
     TransactionRepository.setCurrentUserId(null);
-    _state = AuthState.initial();
+    _state = AuthState.initial().copyWith(isLoading: false);
     notifyListeners();
   }
 
@@ -132,6 +214,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (res.statusCode == 200) {
         _state = AuthState(
+          isLoading: false,
           isLoggedIn: true,
           isOnboarded: true,
           userId: _state.userId,
@@ -139,6 +222,7 @@ class AuthProvider extends ChangeNotifier {
           userName: _state.userName,
           userCategories: categories,
         );
+        await _saveProfileCache();
         notifyListeners();
       } else {
         throw Exception("Onboarding failed: ${res.statusCode}");
@@ -147,6 +231,7 @@ class AuthProvider extends ChangeNotifier {
       debugPrint("❌ Onboarding error: $e");
       // Fallback: mark as onboarded locally even if API fails
       _state = AuthState(
+        isLoading: false,
         isLoggedIn: true,
         isOnboarded: true,
         userId: _state.userId,
@@ -154,6 +239,7 @@ class AuthProvider extends ChangeNotifier {
         userName: _state.userName,
         userCategories: categories,
       );
+      await _saveProfileCache();
       notifyListeners();
     }
   }
@@ -165,6 +251,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (res.statusCode == 200) {
         _state = AuthState(
+          isLoading: false,
           isLoggedIn: true,
           isOnboarded: _state.isOnboarded,
           userId: _state.userId,
@@ -172,6 +259,7 @@ class AuthProvider extends ChangeNotifier {
           userName: newName,
           userCategories: _state.userCategories,
         );
+        await _saveProfileCache();
         notifyListeners();
         debugPrint("✅ Name updated successfully");
       } else {
@@ -215,6 +303,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (res.statusCode == 200) {
         _state = AuthState(
+          isLoading: false,
           isLoggedIn: true,
           isOnboarded: _state.isOnboarded,
           userId: _state.userId,
@@ -222,6 +311,7 @@ class AuthProvider extends ChangeNotifier {
           userName: _state.userName,
           userCategories: categories,
         );
+        await _saveProfileCache();
         notifyListeners();
         debugPrint("✅ Categories updated successfully");
       } else {

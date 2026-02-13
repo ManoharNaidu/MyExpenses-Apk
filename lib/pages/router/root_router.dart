@@ -11,6 +11,9 @@ class RootRouter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>().state;
+    if (auth.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     if (!auth.isLoggedIn) return const AuthPage();
     if (!auth.isOnboarded) return const CategorySelectionPage();
     return const MainScaffold();

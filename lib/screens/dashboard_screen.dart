@@ -21,6 +21,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isUploadingPdf = false;
 
+  @override
+  void initState() {
+    super.initState();
+    TransactionRepository.ensureInitialized();
+  }
+
   Future<void> _uploadPdfAndReview() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -364,8 +370,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<List<TransactionModel>>(
       stream: TransactionRepository.getTransactionsStream(),
+      initialData: TransactionRepository.currentTransactions,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if ((snapshot.data == null || snapshot.data!.isEmpty) &&
+            snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
@@ -374,7 +382,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final txs = snapshot.data ?? [];
 
         final now = DateTime.now();
-        final todayKey = DateTime(now.year, now.month, now.day);
         final weekStart = DateUtilsX.weekStartMonday(now);
         final weekEnd = DateUtilsX.weekEndSunday(now);
         final monthKey = DateTime(now.year, now.month, 1);
@@ -394,16 +401,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .where((t) => pred(t) && t.type == TxType.expense)
             .fold(0.0, (a, b) => a + b.amount);
 
-        bool isToday(TransactionModel t) =>
-            DateTime(t.date.year, t.date.month, t.date.day) == todayKey;
-
         bool isThisWeek(TransactionModel t) =>
             !t.date.isBefore(weekStart) && !t.date.isAfter(weekEnd);
 
         bool isThisMonth(TransactionModel t) =>
             t.date.year == monthKey.year && t.date.month == monthKey.month;
 
-        final todayNet = sumWhere(isToday);
         final weekNet = sumWhere(isThisWeek);
         final monthNet = sumWhere(isThisMonth);
 
@@ -425,11 +428,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
-                SummaryCard(
-                  title: "Today (Net)",
-                  value: todayNet.toStringAsFixed(2),
-                  icon: Icons.today_rounded,
-                ),
                 SummaryCard(
                   title: "This Week (Net)",
                   value: weekNet.toStringAsFixed(2),

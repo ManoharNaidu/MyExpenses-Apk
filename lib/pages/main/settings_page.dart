@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/categories.dart';
+import '../../core/notifications/notification_service.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPreference();
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    final enabled = await NotificationService.isEnabled();
+    if (!mounted) return;
+    setState(() => _notificationsEnabled = enabled);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +38,6 @@ class SettingsPage extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: ListView(
         children: [
-          // User Info Card
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -95,8 +115,6 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Settings Options
           Card(
             child: Column(
               children: [
@@ -124,12 +142,22 @@ class SettingsPage extends StatelessWidget {
                   onTap: () =>
                       _showEditCategoriesDialog(context, userCategories),
                 ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.notifications_active_outlined),
+                  title: const Text("Notifications"),
+                  subtitle: const Text("Enable transaction notifications"),
+                  value: _notificationsEnabled,
+                  onChanged: (value) async {
+                    await NotificationService.setEnabled(value);
+                    if (!mounted) return;
+                    setState(() => _notificationsEnabled = value);
+                  },
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-
-          // Logout Button
           Card(
             color: Colors.red[50],
             child: ListTile(
@@ -149,7 +177,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  static void _showChangeNameDialog(BuildContext context, String currentName) {
+  void _showChangeNameDialog(BuildContext context, String currentName) {
     final nameController = TextEditingController(text: currentName);
     final formKey = GlobalKey<FormState>();
 
@@ -189,9 +217,7 @@ class SettingsPage extends StatelessWidget {
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Name updated successfully"),
-                      ),
+                      const SnackBar(content: Text("Name updated successfully")),
                     );
                   }
                 } catch (e) {
@@ -210,7 +236,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  static void _showChangePasswordDialog(BuildContext context) {
+  void _showChangePasswordDialog(BuildContext context) {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -233,9 +259,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter current password";
-                  }
+                  if (value == null || value.isEmpty) return "Enter current password";
                   return null;
                 },
               ),
@@ -248,9 +272,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter new password";
-                  }
+                  if (value == null || value.isEmpty) return "Enter new password";
                   return null;
                 },
               ),
@@ -263,9 +285,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value != newPasswordController.text) {
-                    return "Passwords do not match";
-                  }
+                  if (value != newPasswordController.text) return "Passwords do not match";
                   return null;
                 },
               ),
@@ -288,9 +308,7 @@ class SettingsPage extends StatelessWidget {
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Password updated successfully"),
-                      ),
+                      const SnackBar(content: Text("Password updated successfully")),
                     );
                   }
                 } catch (e) {
@@ -309,7 +327,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  static void _showEditCategoriesDialog(
+  void _showEditCategoriesDialog(
     BuildContext context,
     List<String> currentCategories,
   ) {
@@ -379,7 +397,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  static void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

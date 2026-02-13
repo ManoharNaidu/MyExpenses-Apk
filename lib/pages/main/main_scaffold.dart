@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/theme/theme_provider.dart';
 import '../../screens/dashboard_screen.dart';
 import '../../screens/history_screen.dart';
 import '../../screens/analytics_screen.dart';
@@ -15,6 +18,58 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    TransactionRepository.ensureInitialized();
+  }
+
+  Future<void> _openProfileMenu() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.settings_rounded),
+                title: const Text('Settings'),
+                subtitle: const Text('Open profile and account settings'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.pop(ctx, 'settings'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.brightness_6_rounded),
+                title: const Text('Toggle Dark / Light mode'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.pop(ctx, 'theme'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selected == null) return;
+
+    if (selected == 'settings') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SettingsPage()),
+      );
+      return;
+    }
+
+    if (selected == 'theme') {
+      await context.read<ThemeProvider>().toggleTheme();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Theme updated')),
+      );
+    }
+  }
 
   Future<void> _exportTransactions() async {
     try {
@@ -45,10 +100,9 @@ class _MainScaffoldState extends State<MainScaffold> {
     const DashboardScreen(),
     const HistoryScreen(),
     const AnalyticsScreen(),
-    const SettingsPage(),
   ];
 
-  final titles = ["My Expenses", "History", "Analytics", "Settings"];
+  final titles = ["My Expenses", "History", "Analytics"];
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +116,11 @@ class _MainScaffoldState extends State<MainScaffold> {
                   tooltip: "Export CSV",
                   onPressed: _exportTransactions,
                   icon: const Icon(Icons.download_rounded),
+                ),
+                IconButton(
+                  tooltip: 'Profile',
+                  onPressed: _openProfileMenu,
+                  icon: const Icon(Icons.account_circle_rounded),
                 ),
               ]
             : null,
@@ -85,10 +144,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_rounded),
             label: "Analytics",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_rounded),
-            label: "Settings",
           ),
         ],
       ),

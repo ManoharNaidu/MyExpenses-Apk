@@ -33,9 +33,9 @@ class _RegisterFormState extends State<RegisterForm> {
 
     try {
       await context.read<AuthProvider>().register(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
     } catch (e) {
       if (mounted) {
@@ -104,7 +104,8 @@ class _RegisterFormState extends State<RegisterForm> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!value.contains('@')) {
+              if (!value.contains("@")) {
+                debugPrint("Invalid email: $value");
                 return 'Please enter a valid email';
               }
               return null;

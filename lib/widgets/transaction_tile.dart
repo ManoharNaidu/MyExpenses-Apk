@@ -7,12 +7,14 @@ class TransactionTile extends StatelessWidget {
   final TransactionModel tx;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final bool showDeleteOnLeft;
 
   const TransactionTile({
     super.key,
     required this.tx,
     required this.onDelete,
     required this.onEdit,
+    this.showDeleteOnLeft = false,
   });
 
   @override
@@ -23,17 +25,25 @@ class TransactionTile extends StatelessWidget {
 
     return Card(
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: (isIncome ? Colors.green : Colors.red).withOpacity(
-            0.12,
-          ),
-          child: Icon(
-            isIncome
-                ? Icons.arrow_downward_rounded
-                : Icons.arrow_upward_rounded,
-            color: isIncome ? Colors.green : Colors.red,
-          ),
-        ),
+        leading: showDeleteOnLeft
+            ? IconButton(
+                tooltip: 'Delete',
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red,
+                ),
+                onPressed: onDelete,
+              )
+            : CircleAvatar(
+                backgroundColor: (isIncome ? Colors.green : Colors.red)
+                    .withOpacity(0.12),
+                child: Icon(
+                  isIncome
+                      ? Icons.arrow_downward_rounded
+                      : Icons.arrow_upward_rounded,
+                  color: isIncome ? Colors.green : Colors.red,
+                ),
+              ),
         title: Text(
           tx.category,
           style: const TextStyle(
@@ -52,7 +62,6 @@ class TransactionTile extends StatelessWidget {
           ),
         ),
         onTap: onEdit,
-        onLongPress: onDelete,
       ),
     );
   }

@@ -1,4 +1,5 @@
 class AuthState {
+  final bool isLoading;
   final bool isLoggedIn;
   final bool isOnboarded;
   final String? userId;
@@ -7,6 +8,7 @@ class AuthState {
   final List<String>? userCategories;
 
   AuthState({
+    required this.isLoading,
     required this.isLoggedIn,
     required this.isOnboarded,
     this.userId,
@@ -16,6 +18,7 @@ class AuthState {
   });
 
   factory AuthState.initial() => AuthState(
+    isLoading: true,
     isLoggedIn: false,
     isOnboarded: false,
     userId: null,
@@ -23,4 +26,24 @@ class AuthState {
     userName: null,
     userCategories: null,
   );
+
+  AuthState copyWith({
+    bool? isLoading,
+    bool? isLoggedIn,
+    bool? isOnboarded,
+    String? userId,
+    String? userEmail,
+    String? userName,
+    List<String>? userCategories,
+  }) {
+    return AuthState(
+      isLoading: isLoading ?? this.isLoading,
+      isLoggedIn: isLoggedIn ?? this.isLoggedIn,
+      isOnboarded: isOnboarded ?? this.isOnboarded,
+      userId: userId ?? this.userId,
+      userEmail: userEmail ?? this.userEmail,
+      userName: userName ?? this.userName,
+      userCategories: userCategories ?? this.userCategories,
+    );
+  }
 }

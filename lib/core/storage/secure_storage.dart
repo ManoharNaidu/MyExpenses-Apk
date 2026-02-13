@@ -23,4 +23,16 @@ class SecureStorage {
     debugPrint("🗑️ Clearing token");
     await _storage.delete(key: _key);
   }
+
+  static Future<void> writeString(String key, String value) async {
+    await _storage.write(key: key, value: value);
+  }
+
+  static Future<String?> readString(String key) async {
+    return _storage.read(key: key);
+  }
+
+  static Future<void> deleteKey(String key) async {
+    await _storage.delete(key: key);
+  }
 }

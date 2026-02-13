@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../storage/secure_storage.dart';
@@ -7,6 +8,43 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
   static String get _baseUrl => dotenv.env['API_URL'] ?? '';
+
+  static bool _isRetryableStatus(int statusCode) {
+    return statusCode == 408 ||
+        statusCode == 429 ||
+        statusCode == 502 ||
+        statusCode == 503 ||
+        statusCode == 504;
+  }
+
+  static Future<http.Response> _withRetry(
+    Future<http.Response> Function() request,
+  ) async {
+    const maxAttempts = 2;
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await request();
+        if (!_isRetryableStatus(response.statusCode) || attempt == maxAttempts) {
+          return response;
+        }
+
+        debugPrint(
+          '♻️ Retrying request after status ${response.statusCode} (attempt $attempt/$maxAttempts)',
+        );
+      } on TimeoutException catch (_) {
+        if (attempt == maxAttempts) rethrow;
+        debugPrint('♻️ Retrying request after timeout (attempt $attempt/$maxAttempts)');
+      } catch (e) {
+        if (attempt == maxAttempts) rethrow;
+        debugPrint('♻️ Retrying request after network error: $e');
+      }
+
+      await Future.delayed(const Duration(milliseconds: 900));
+    }
+
+    return http.Response('{"error": "Retry failed"}', 500);
+  }
 
   static Future<http.Response> post(
     String path,
@@ -35,15 +73,17 @@ class ApiClient {
       }
       debugPrint("📦 Body: ${jsonEncode(body)}");
 
-      final response = await http
-          .post(Uri.parse(url), headers: headers, body: jsonEncode(body))
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              debugPrint("⏱️ Request timeout after 30 seconds");
-              return http.Response('{"error": "Request timeout"}', 408);
-            },
-          );
+      final response = await _withRetry(
+        () => http
+            .post(Uri.parse(url), headers: headers, body: jsonEncode(body))
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                debugPrint("⏱️ Request timeout after 30 seconds");
+                return http.Response('{"error": "Request timeout"}', 408);
+              },
+            ),
+      );
 
       debugPrint("📥 Response ${response.statusCode}: ${response.body}");
       return response;
@@ -69,21 +109,23 @@ class ApiClient {
       debugPrint("🌐 GET $url");
       debugPrint("🔑 Token: ${token.substring(0, 20)}...");
 
-      final response = await http
-          .get(
-            Uri.parse(url),
-            headers: {
-              "Authorization": "Bearer $token",
-              "Content-Type": "application/json",
-            },
-          )
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              debugPrint("⏱️ Request timeout after 30 seconds");
-              return http.Response('{"error": "Request timeout"}', 408);
-            },
-          );
+      final response = await _withRetry(
+        () => http
+            .get(
+              Uri.parse(url),
+              headers: {
+                "Authorization": "Bearer $token",
+                "Content-Type": "application/json",
+              },
+            )
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                debugPrint("⏱️ Request timeout after 30 seconds");
+                return http.Response('{"error": "Request timeout"}', 408);
+              },
+            ),
+      );
 
       debugPrint("📥 Response ${response.statusCode}: ${response.body}");
       return response;
@@ -114,15 +156,17 @@ class ApiClient {
       debugPrint("🔑 Token: ${token.substring(0, 20)}...");
       debugPrint("📦 Body: ${jsonEncode(body)}");
 
-      final response = await http
-          .put(Uri.parse(url), headers: headers, body: jsonEncode(body))
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              debugPrint("⏱️ Request timeout after 30 seconds");
-              return http.Response('{"error": "Request timeout"}', 408);
-            },
-          );
+      final response = await _withRetry(
+        () => http
+            .put(Uri.parse(url), headers: headers, body: jsonEncode(body))
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                debugPrint("⏱️ Request timeout after 30 seconds");
+                return http.Response('{"error": "Request timeout"}', 408);
+              },
+            ),
+      );
 
       debugPrint("📥 Response ${response.statusCode}: ${response.body}");
       return response;
@@ -152,15 +196,17 @@ class ApiClient {
       debugPrint("🌐 DELETE $url");
       debugPrint("🔑 Token: ${token.substring(0, 20)}...");
 
-      final response = await http
-          .delete(Uri.parse(url), headers: headers)
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              debugPrint("⏱️ Request timeout after 30 seconds");
-              return http.Response('{"error": "Request timeout"}', 408);
-            },
-          );
+      final response = await _withRetry(
+        () => http
+            .delete(Uri.parse(url), headers: headers)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                debugPrint("⏱️ Request timeout after 30 seconds");
+                return http.Response('{"error": "Request timeout"}', 408);
+              },
+            ),
+      );
 
       debugPrint("📥 Response ${response.statusCode}: ${response.body}");
       return response;

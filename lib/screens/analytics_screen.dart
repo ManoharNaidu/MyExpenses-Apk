@@ -15,11 +15,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   int _selectedTab = 0; // 0 = Weekly, 1 = Monthly
 
   @override
+  void initState() {
+    super.initState();
+    TransactionRepository.ensureInitialized();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<TransactionModel>>(
       stream: TransactionRepository.getTransactionsStream(),
+      initialData: TransactionRepository.currentTransactions,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if ((snapshot.data == null || snapshot.data!.isEmpty) &&
+            snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {

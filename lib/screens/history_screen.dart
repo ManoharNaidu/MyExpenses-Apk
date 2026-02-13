@@ -15,13 +15,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String typeFilter = "All";
   String categoryFilter = "All";
   String monthFilter = "All"; // yyyy-mm
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    TransactionRepository.ensureInitialized();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final nearBottom = position.pixels >= position.maxScrollExtent - 200;
+
+    if (nearBottom && !TransactionRepository.isLoading) {
+      TransactionRepository.loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<TransactionModel>>(
       stream: TransactionRepository.getTransactionsStream(),
+      initialData: TransactionRepository.currentTransactions,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if ((snapshot.data == null || snapshot.data!.isEmpty) &&
+            snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
@@ -52,6 +80,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
           return typeOk && catOk && monthOk;
         }).toList();
+
+        final hasMore = TransactionRepository.hasMore;
+        final isLoading = TransactionRepository.isLoading;
+        final isOnline = TransactionRepository.isOnline;
+
+        final listItemCount = filtered.length + ((hasMore || isLoading) ? 1 : 0);
 
         return Scaffold(
           floatingActionButton: FloatingActionButton(
@@ -117,14 +151,49 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   decoration: const InputDecoration(labelText: "Category"),
                 ),
                 const SizedBox(height: 12),
+                if (!isOnline)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.orange.shade300),
+                    ),
+                    child: const Text(
+                      'You are offline. Showing cached transactions.',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
 
                 Expanded(
                   child: ListView.builder(
-                    itemCount: filtered.length,
+                    controller: _scrollController,
+                    itemCount: listItemCount,
                     itemBuilder: (context, i) {
+                      if (i >= filtered.length) {
+                        if (isLoading) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        if (hasMore && isOnline) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: Text('Scroll to load more...')),
+                          );
+                        }
+
+                        return const SizedBox.shrink();
+                      }
+
                       final tx = filtered[i];
                       return TransactionTile(
                         tx: tx,
+                        showDeleteOnLeft: true,
                         onDelete: () async {
                           await TransactionRepository.delete(tx.id!);
                         },
