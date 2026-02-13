@@ -34,7 +34,7 @@ class _AuthPageState extends State<AuthPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Image.asset(
-                      "assets/icon/icon2.png",
+                      "assets/icon/icon_classy.png",
                       fit: BoxFit.contain,
                     ),
                   ),
