@@ -32,7 +32,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final authProvider = context.watch<AuthProvider>();
     final userName = authProvider.state.userName ?? "User";
     final userEmail = authProvider.state.userEmail ?? "";
-    final userCategories = authProvider.state.userCategories ?? [];
+    final userIncomeCategories = authProvider.state.effectiveIncomeCategories;
+    final userExpenseCategories = authProvider.state.effectiveExpenseCategories;
+    final userCategories = {...userIncomeCategories, ...userExpenseCategories}.toList();
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -137,10 +139,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.category_outlined),
                   title: const Text("Edit Categories"),
-                  subtitle: Text("${userCategories.length} selected"),
+                  subtitle: Text(
+                    "Income: ${userIncomeCategories.length} • Expense: ${userExpenseCategories.length}",
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      _showEditCategoriesDialog(context, userCategories),
+                  onTap: () => _showEditCategoriesDialog(
+                    context,
+                    userIncomeCategories,
+                    userExpenseCategories,
+                  ),
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
@@ -329,9 +336,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showEditCategoriesDialog(
     BuildContext context,
-    List<String> currentCategories,
+    List<String> currentIncomeCategories,
+    List<String> currentExpenseCategories,
   ) {
-    final selected = Set<String>.from(currentCategories);
+    final selectedIncome = Set<String>.from(currentIncomeCategories);
+    final selectedExpense = Set<String>.from(currentExpenseCategories);
+    final incomeOptions = {
+      ...predefinedIncomeCategories,
+      ...currentIncomeCategories,
+    }.toList();
+    final expenseOptions = {
+      ...predefinedExpenseCategories,
+      ...currentExpenseCategories,
+    }.toList();
 
     showDialog(
       context: context,
@@ -342,22 +359,55 @@ class _SettingsPageState extends State<SettingsPage> {
             width: double.maxFinite,
             child: ListView(
               shrinkWrap: true,
-              children: predefinedCategories.map((category) {
-                final isSelected = selected.contains(category);
-                return CheckboxListTile(
-                  title: Text(category),
-                  value: isSelected,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      if (value == true) {
-                        selected.add(category);
-                      } else {
-                        selected.remove(category);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
+              children: [
+                const Text(
+                  "Income Categories",
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                ...incomeOptions.map((category) {
+                  final isSelected = selectedIncome.contains(category);
+                  return CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(category),
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          selectedIncome.add(category);
+                        } else {
+                          selectedIncome.remove(category);
+                        }
+                      });
+                    },
+                  );
+                }),
+                const SizedBox(height: 12),
+                const Text(
+                  "Expense Categories",
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                ...expenseOptions.map((category) {
+                  final isSelected = selectedExpense.contains(category);
+                  return CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(category),
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          selectedExpense.add(category);
+                        } else {
+                          selectedExpense.remove(category);
+                        }
+                      });
+                    },
+                  );
+                }),
+              ],
             ),
           ),
           actions: [
@@ -366,18 +416,21 @@ class _SettingsPageState extends State<SettingsPage> {
               child: const Text("Cancel"),
             ),
             FilledButton(
-              onPressed: selected.isEmpty
+              onPressed: (selectedIncome.isEmpty && selectedExpense.isEmpty)
                   ? null
                   : () async {
                       try {
                         await context.read<AuthProvider>().updateCategories(
-                          selected.toList(),
+                          incomeCategories: selectedIncome.toList(),
+                          expenseCategories: selectedExpense.toList(),
                         );
                         if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text("Categories updated successfully"),
+                              content: Text(
+                                "Income & expense categories updated successfully",
+                              ),
                             ),
                           );
                         }
@@ -410,9 +463,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              context.read<AuthProvider>().logout();
-              Navigator.pop(context);
+            onPressed: () async {
+              await context.read<AuthProvider>().logout();
+              if (!context.mounted) return;
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text("Logout"),
           ),

@@ -28,7 +28,7 @@ class _AuthPageState extends State<AuthPage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.2),
+                    color: AppTheme.accent.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Padding(
@@ -51,9 +51,12 @@ class _AuthPageState extends State<AuthPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   "Track your spending, save more",
-                  style: TextStyle(fontSize: 14, color: AppTheme.textSoft),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSoft,
+                  ),
                 ),
                 const SizedBox(height: 40),
 
@@ -64,7 +67,7 @@ class _AuthPageState extends State<AuthPage> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),

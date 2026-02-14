@@ -23,7 +23,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   final amountCtrl = TextEditingController();
   final descriptionCtrl = TextEditingController();
 
-  final incomeCats = const ["Transfer", "IveHub", "Dash/Uber", "Part-Time"];
+  final incomeCats = const ["Transfer", "Job", "Deposit"];
   final expenseCats = const [
     "RoomRent",
     "Scooty Rent",
@@ -61,11 +61,16 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedUserCats = context.watch<AuthProvider>().state.userCategories ?? [];
+    final authState = context.watch<AuthProvider>().state;
+    final selectedUserCats = authState.effectiveExpenseCategories;
+    final selectedIncomeCats = authState.effectiveIncomeCategories;
     final expenseOptions = selectedUserCats.isNotEmpty
         ? selectedUserCats
         : expenseCats;
-    final cats = type == TxType.income ? incomeCats : expenseOptions;
+    final incomeOptions = selectedIncomeCats.isNotEmpty
+        ? selectedIncomeCats
+        : incomeCats;
+    final cats = type == TxType.income ? incomeOptions : expenseOptions;
     final selectedCategory = cats.contains(category) ? category : cats.first;
     category = selectedCategory;
 
@@ -109,7 +114,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                   selected: type == TxType.income,
                   onTap: () => setState(() {
                     type = TxType.income;
-                    category = incomeCats.first;
+                    category = incomeOptions.first;
                   }),
                 ),
                 const SizedBox(width: 10),
@@ -128,7 +133,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             // category dropdown
             DropdownButtonFormField<String>(
-              value: selectedCategory,
+              initialValue: selectedCategory,
               items: cats
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),

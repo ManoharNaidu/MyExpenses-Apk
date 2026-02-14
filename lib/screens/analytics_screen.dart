@@ -247,8 +247,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         interval: n > 6 ? 2 : 1,
                         getTitlesWidget: (v, meta) {
                           final idx = v.toInt();
-                          if (idx < 0 || idx >= labels.length)
+                          if (idx < 0 || idx >= labels.length) {
                             return const SizedBox.shrink();
+                          }
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(

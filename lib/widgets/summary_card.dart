@@ -24,7 +24,7 @@ class SummaryCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.18),
+                color: AppTheme.accent.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: AppTheme.accentDark),

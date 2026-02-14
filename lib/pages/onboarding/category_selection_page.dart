@@ -12,7 +12,35 @@ class CategorySelectionPage extends StatefulWidget {
 }
 
 class _CategorySelectionPageState extends State<CategorySelectionPage> {
-  final Set<String> selected = {};
+  final Set<String> selectedIncome = {};
+  final Set<String> selectedExpense = {};
+  final _incomeCtrl = TextEditingController();
+  final _expenseCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _incomeCtrl.dispose();
+    _expenseCtrl.dispose();
+    super.dispose();
+  }
+
+  void _addCustomIncome() {
+    final value = _incomeCtrl.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      selectedIncome.add(value);
+      _incomeCtrl.clear();
+    });
+  }
+
+  void _addCustomExpense() {
+    final value = _expenseCtrl.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      selectedExpense.add(value);
+      _expenseCtrl.clear();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +59,7 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
         child: Column(
           children: [
             const Text(
-              "Choose your expense categories",
+              "Choose your categories",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -40,57 +68,147 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              "Select at least one category to continue",
+              "Pick both income and expense categories. You can add your own too.",
               style: TextStyle(fontSize: 14, color: AppTheme.textSoft),
             ),
             const SizedBox(height: 24),
             Expanded(
               child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: predefinedCategories.map((cat) {
-                    final isSelected = selected.contains(cat);
-                    return FilterChip(
-                      label: Text(cat),
-                      selected: isSelected,
-                      onSelected: (val) {
-                        setState(() {
-                          val ? selected.add(cat) : selected.remove(cat);
-                        });
-                      },
-                      backgroundColor: AppTheme.card,
-                      selectedColor: AppTheme.accent.withOpacity(0.2),
-                      checkmarkColor: AppTheme.accentDark,
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? AppTheme.accentDark
-                            : AppTheme.textDark,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppTheme.accent
-                            : Colors.grey.shade300,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    );
-                  }).toList(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Income Categories",
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        ...predefinedIncomeCategories.map((cat) {
+                          final isSelected = selectedIncome.contains(cat);
+                          return FilterChip(
+                            label: Text(cat),
+                            selected: isSelected,
+                            onSelected: (val) {
+                              setState(() {
+                                val
+                                    ? selectedIncome.add(cat)
+                                    : selectedIncome.remove(cat);
+                              });
+                            },
+                            backgroundColor: AppTheme.card,
+                            selectedColor: AppTheme.accent.withValues(alpha: 0.2),
+                            checkmarkColor: AppTheme.accentDark,
+                          );
+                        }),
+                        ...selectedIncome
+                            .where(
+                              (cat) =>
+                                  !predefinedIncomeCategories.contains(cat),
+                            )
+                            .map(
+                              (cat) => InputChip(
+                                label: Text(cat),
+                                onDeleted: () {
+                                  setState(() => selectedIncome.remove(cat));
+                                },
+                              ),
+                            ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _incomeCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Add custom income category",
+                            ),
+                            onSubmitted: (_) => _addCustomIncome(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _addCustomIncome,
+                          icon: const Icon(Icons.add_circle_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Expense Categories",
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        ...predefinedExpenseCategories.map((cat) {
+                          final isSelected = selectedExpense.contains(cat);
+                          return FilterChip(
+                            label: Text(cat),
+                            selected: isSelected,
+                            onSelected: (val) {
+                              setState(() {
+                                val
+                                    ? selectedExpense.add(cat)
+                                    : selectedExpense.remove(cat);
+                              });
+                            },
+                            backgroundColor: AppTheme.card,
+                            selectedColor: AppTheme.accent.withValues(alpha: 0.2),
+                            checkmarkColor: AppTheme.accentDark,
+                          );
+                        }),
+                        ...selectedExpense
+                            .where(
+                              (cat) =>
+                                  !predefinedExpenseCategories.contains(cat),
+                            )
+                            .map(
+                              (cat) => InputChip(
+                                label: Text(cat),
+                                onDeleted: () {
+                                  setState(() => selectedExpense.remove(cat));
+                                },
+                              ),
+                            ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _expenseCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Add custom expense category",
+                            ),
+                            onSubmitted: (_) => _addCustomExpense(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _addCustomExpense,
+                          icon: const Icon(Icons.add_circle_rounded),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
             // Selected count
-            if (selected.isNotEmpty)
+            if (selectedIncome.isNotEmpty || selectedExpense.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: Text(
-                  "${selected.length} ${selected.length == 1 ? 'category' : 'categories'} selected",
+                  "Income: ${selectedIncome.length} • Expense: ${selectedExpense.length}",
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -102,13 +220,22 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: selected.isEmpty
+                onPressed: (selectedIncome.isEmpty && selectedExpense.isEmpty)
                     ? null
                     : () {
-                        final categoriesList = selected.toList();
-                        debugPrint("🎯 Selected categories: $categoriesList");
+                        final incomeList = selectedIncome.toList();
+                        final expenseList = selectedExpense.toList();
+                        final categoriesList = {...incomeList, ...expenseList}
+                            .toList();
+
+                        debugPrint(
+                          "🎯 Onboarding categories income=$incomeList expense=$expenseList",
+                        );
+
                         context.read<AuthProvider>().markOnboarded(
                           categories: categoriesList,
+                          incomeCategories: incomeList,
+                          expenseCategories: expenseList,
                         );
                       },
                 style: ElevatedButton.styleFrom(

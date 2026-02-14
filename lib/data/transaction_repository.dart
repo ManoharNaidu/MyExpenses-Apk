@@ -208,7 +208,7 @@ class TransactionRepository {
         ..clear()
         ..addAll(firstPage);
       _offset = _transactions.length;
-      _hasMore = firstPage.length == pageSize;
+      _hasMore = firstPage.length >= pageSize;
       _emitCurrent();
       await _saveToCache();
     } catch (e) {
@@ -232,7 +232,7 @@ class TransactionRepository {
       } else {
         _transactions.addAll(page);
         _offset = _transactions.length;
-        _hasMore = page.length == pageSize;
+        _hasMore = page.length >= pageSize;
       }
 
       _emitCurrent();
@@ -355,7 +355,7 @@ class TransactionRepository {
         ..addAll(refreshed);
 
       _offset = _transactions.length;
-      _hasMore = refreshed.length == loadedCount;
+      _hasMore = refreshed.length >= loadedCount;
 
       _emitCurrent();
       await _saveToCache();

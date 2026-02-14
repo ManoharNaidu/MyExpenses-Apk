@@ -1,8 +1,12 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'transaction_model.dart';
 
 class StagedTransactionDraft {
   final String? stagingId;
   final DateTime date;
+  final TxType predicted_type;
+  final String predicted_category;
   final TxType type;
   final String category;
   final double amount;
@@ -12,6 +16,8 @@ class StagedTransactionDraft {
   const StagedTransactionDraft({
     this.stagingId,
     required this.date,
+    required this.predicted_type,
+    required this.predicted_category,
     required this.type,
     required this.category,
     required this.amount,
@@ -22,6 +28,8 @@ class StagedTransactionDraft {
   StagedTransactionDraft copyWith({
     String? stagingId,
     DateTime? date,
+    TxType? predicted_type,
+    String? predicted_category,
     TxType? type,
     String? category,
     double? amount,
@@ -31,6 +39,8 @@ class StagedTransactionDraft {
     return StagedTransactionDraft(
       stagingId: stagingId ?? this.stagingId,
       date: date ?? this.date,
+      predicted_type: predicted_type ?? this.predicted_type,
+      predicted_category: predicted_category ?? this.predicted_category,
       type: type ?? this.type,
       category: category ?? this.category,
       amount: amount ?? this.amount,
@@ -43,7 +53,16 @@ class StagedTransactionDraft {
     return {
       if (stagingId != null) 'staging_id': stagingId,
       'date': date.toIso8601String().split('T').first,
-      'type': type == TxType.income ? 'Income' : 'Expense',
+      // Confirmed values sent using backend-expected key names.
+      'predicted_type': type == TxType.income ? 'income' : 'expense',
+      'predicted_category': category,
+      // Optional trace fields for original model output before user edits.
+      'original_predicted_type': predicted_type == TxType.income
+          ? 'income'
+          : 'expense',
+      'original_predicted_category': predicted_category,
+      // Backward compatibility if backend still reads generic keys.
+      'type': type == TxType.income ? 'income' : 'expense',
       'category': category,
       'amount': amount,
       'description': description,
@@ -54,7 +73,11 @@ class StagedTransactionDraft {
     dynamic source = decoded;
 
     if (decoded is Map<String, dynamic>) {
-      source = decoded['transactions'] ?? decoded['data'] ?? decoded['results'] ?? [];
+      source =
+          decoded['transactions'] ??
+          decoded['data'] ??
+          decoded['results'] ??
+          [];
     }
 
     if (source is! List) return [];
@@ -68,13 +91,22 @@ class StagedTransactionDraft {
   static StagedTransactionDraft _fromMap(Map<String, dynamic> json) {
     DateTime parsedDate;
     try {
-      final dateValue = json['date'] ?? json['transaction_date'] ?? DateTime.now().toIso8601String();
+      final dateValue =
+          json['date'] ??
+          json['transaction_date'] ??
+          DateTime.now().toIso8601String();
       parsedDate = DateTime.parse(dateValue.toString());
     } catch (_) {
       parsedDate = DateTime.now();
     }
 
-    final rawType = (json['type'] ?? json['expected_type'] ?? 'Expense').toString().toLowerCase();
+    final rawType =
+        (json['type'] ??
+                json['predicted_type'] ??
+                json['expected_type'] ??
+                'Expense')
+            .toString()
+            .toLowerCase();
     final type = rawType.contains('income') ? TxType.income : TxType.expense;
 
     final rawAmount = json['amount'] ?? json['value'] ?? 0;
@@ -85,8 +117,20 @@ class StagedTransactionDraft {
     return StagedTransactionDraft(
       stagingId: json['staging_id']?.toString() ?? json['id']?.toString(),
       date: parsedDate,
+      predicted_type: type,
+      predicted_category:
+          (json['category'] ??
+                  json['expected_category'] ??
+                  json['predicted_category'] ??
+                  'Misc')
+              .toString(),
       type: type,
-      category: (json['category'] ?? json['expected_category'] ?? json['predicted_category'] ?? 'Misc').toString(),
+      category:
+          (json['category'] ??
+                  json['expected_category'] ??
+                  json['predicted_category'] ??
+                  'Misc')
+              .toString(),
       amount: amount,
       description: (json['description'] ?? json['narration'])?.toString(),
       accepted: (json['accepted'] as bool?) ?? true,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../storage/secure_storage.dart';
@@ -11,6 +12,13 @@ class AuthProvider extends ChangeNotifier {
   AuthState _state = AuthState.initial();
   AuthState get state => _state;
 
+  List<String> _toStringList(dynamic raw) {
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    }
+    return <String>[];
+  }
+
   AuthState _copyState({
     bool? isLoading,
     bool? isLoggedIn,
@@ -19,6 +27,8 @@ class AuthProvider extends ChangeNotifier {
     String? userEmail,
     String? userName,
     List<String>? userCategories,
+    List<String>? userIncomeCategories,
+    List<String>? userExpenseCategories,
   }) {
     return AuthState(
       isLoading: isLoading ?? _state.isLoading,
@@ -28,6 +38,9 @@ class AuthProvider extends ChangeNotifier {
       userEmail: userEmail ?? _state.userEmail,
       userName: userName ?? _state.userName,
       userCategories: userCategories ?? _state.userCategories,
+      userIncomeCategories: userIncomeCategories ?? _state.userIncomeCategories,
+      userExpenseCategories:
+          userExpenseCategories ?? _state.userExpenseCategories,
     );
   }
 
@@ -38,6 +51,8 @@ class AuthProvider extends ChangeNotifier {
       'email': _state.userEmail,
       'name': _state.userName,
       'categories': _state.userCategories ?? <String>[],
+      'income_category': _state.userIncomeCategories ?? <String>[],
+      'expense_cateogry': _state.userExpenseCategories ?? <String>[],
     };
     await SecureStorage.writeString(_profileKey, jsonEncode(payload));
   }
@@ -48,10 +63,13 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final data = jsonDecode(raw) as Map<String, dynamic>;
-      final categories = data['categories'];
-      final categoriesList = categories is List
-          ? categories.map((e) => e.toString()).toList()
-          : <String>[];
+      final categoriesList = _toStringList(data['categories']);
+      final incomeCategories = _toStringList(
+        data['income_category'] ?? data['income_categories'],
+      );
+      final expenseCategories = _toStringList(
+        data['expense_cateogry'] ?? data['expense_categories'],
+      );
 
       _state = AuthState(
         isLoading: false,
@@ -61,6 +79,8 @@ class AuthProvider extends ChangeNotifier {
         userEmail: data['email']?.toString(),
         userName: data['name']?.toString(),
         userCategories: categoriesList,
+        userIncomeCategories: incomeCategories,
+        userExpenseCategories: expenseCategories,
       );
       TransactionRepository.setCurrentUserId(_state.userId);
       notifyListeners();
@@ -92,10 +112,13 @@ class AuthProvider extends ChangeNotifier {
         final data = jsonDecode(res.body);
         debugPrint("👤 User data: $data");
 
-        final categories = data["categories"];
-        final categoriesList = categories is List
-            ? categories.map((e) => e.toString()).toList()
-            : <String>[];
+        final categoriesList = _toStringList(data["categories"]);
+        final incomeCategories = _toStringList(
+          data["income_category"] ?? data["income_categories"],
+        );
+        final expenseCategories = _toStringList(
+          data["expense_cateogry"] ?? data["expense_categories"],
+        );
 
         _state = AuthState(
           isLoading: false,
@@ -105,6 +128,8 @@ class AuthProvider extends ChangeNotifier {
           userEmail: data["email"],
           userName: data["name"],
           userCategories: categoriesList,
+          userIncomeCategories: incomeCategories,
+          userExpenseCategories: expenseCategories,
         );
 
         // Set user ID for transaction filtering
@@ -196,13 +221,39 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markOnboarded({List<String>? categories}) async {
+  Future<void> markOnboarded({
+    List<String>? categories,
+    List<String>? incomeCategories,
+    List<String>? expenseCategories,
+  }) async {
+    final resolvedCategories = categories ?? <String>[];
+    final resolvedIncomeCategories = incomeCategories ?? <String>[];
+    final resolvedExpenseCategories = expenseCategories ?? <String>[];
+
     try {
-      debugPrint("📦 Onboarding with categories: $categories");
+      debugPrint(
+        "📦 Onboarding with income: $resolvedIncomeCategories expense: $resolvedExpenseCategories categories: $resolvedCategories",
+      );
+
+      final categoryPairs = List.generate(
+        math.max(
+          resolvedIncomeCategories.length,
+          resolvedExpenseCategories.length,
+        ),
+        (index) => {
+          "income_category": index < resolvedIncomeCategories.length
+              ? resolvedIncomeCategories[index]
+              : null,
+          "expense_category": index < resolvedExpenseCategories.length
+              ? resolvedExpenseCategories[index]
+              : null,
+        },
+      );
 
       final payload = {
-        if (categories != null && categories.isNotEmpty)
-          "categories": categories,
+        // Backend expects categories as list of objects containing
+        // income_category + expense_category.
+        "categories": categoryPairs,
       };
 
       debugPrint("📤 Sending payload: $payload");
@@ -220,7 +271,9 @@ class AuthProvider extends ChangeNotifier {
           userId: _state.userId,
           userEmail: _state.userEmail,
           userName: _state.userName,
-          userCategories: categories,
+          userCategories: resolvedCategories,
+          userIncomeCategories: resolvedIncomeCategories,
+          userExpenseCategories: resolvedExpenseCategories,
         );
         await _saveProfileCache();
         notifyListeners();
@@ -237,7 +290,9 @@ class AuthProvider extends ChangeNotifier {
         userId: _state.userId,
         userEmail: _state.userEmail,
         userName: _state.userName,
-        userCategories: categories,
+        userCategories: resolvedCategories,
+        userIncomeCategories: resolvedIncomeCategories,
+        userExpenseCategories: resolvedExpenseCategories,
       );
       await _saveProfileCache();
       notifyListeners();
@@ -257,6 +312,8 @@ class AuthProvider extends ChangeNotifier {
           userId: _state.userId,
           userEmail: _state.userEmail,
           userName: newName,
+          userIncomeCategories: _state.userIncomeCategories,
+          userExpenseCategories: _state.userExpenseCategories,
           userCategories: _state.userCategories,
         );
         await _saveProfileCache();
@@ -294,11 +351,33 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateCategories(List<String> categories) async {
+  Future<void> updateCategories({
+    required List<String> incomeCategories,
+    required List<String> expenseCategories,
+  }) async {
     try {
-      debugPrint("📦 Updating categories: $categories");
+      final mergedCategories = {...incomeCategories, ...expenseCategories}.toList();
+      final categoryPairs = List.generate(
+        math.max(incomeCategories.length, expenseCategories.length),
+        (index) => {
+          "income_category":
+              index < incomeCategories.length ? incomeCategories[index] : null,
+          "expense_category":
+              index < expenseCategories.length ? expenseCategories[index] : null,
+        },
+      );
+
+      debugPrint(
+        "📦 Updating categories income=$incomeCategories expense=$expenseCategories",
+      );
       final res = await ApiClient.put("/settings/categories", {
-        "categories": categories,
+        // Backend validates categories as list of objects.
+        "categories": categoryPairs,
+        // Optional compatibility fields.
+        "all_categories": mergedCategories,
+        "income_category": incomeCategories,
+        "expense_category": expenseCategories,
+        "expense_cateogry": expenseCategories,
       });
 
       if (res.statusCode == 200) {
@@ -309,7 +388,9 @@ class AuthProvider extends ChangeNotifier {
           userId: _state.userId,
           userEmail: _state.userEmail,
           userName: _state.userName,
-          userCategories: categories,
+          userCategories: mergedCategories,
+          userIncomeCategories: incomeCategories,
+          userExpenseCategories: expenseCategories,
         );
         await _saveProfileCache();
         notifyListeners();

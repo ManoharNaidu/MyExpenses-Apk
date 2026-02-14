@@ -6,6 +6,16 @@ class AuthState {
   final String? userEmail;
   final String? userName;
   final List<String>? userCategories;
+  final List<String>? userIncomeCategories;
+  final List<String>? userExpenseCategories;
+
+  List<String> get effectiveIncomeCategories =>
+      userIncomeCategories ?? const [];
+
+  List<String> get effectiveExpenseCategories {
+    if (userExpenseCategories != null) return userExpenseCategories!;
+    return userCategories ?? const [];
+  }
 
   AuthState({
     required this.isLoading,
@@ -15,6 +25,8 @@ class AuthState {
     this.userEmail,
     this.userName,
     this.userCategories,
+    this.userIncomeCategories,
+    this.userExpenseCategories,
   });
 
   factory AuthState.initial() => AuthState(
@@ -25,6 +37,8 @@ class AuthState {
     userEmail: null,
     userName: null,
     userCategories: null,
+    userIncomeCategories: null,
+    userExpenseCategories: null,
   );
 
   AuthState copyWith({
@@ -35,6 +49,8 @@ class AuthState {
     String? userEmail,
     String? userName,
     List<String>? userCategories,
+    List<String>? userIncomeCategories,
+    List<String>? userExpenseCategories,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -44,6 +60,10 @@ class AuthState {
       userEmail: userEmail ?? this.userEmail,
       userName: userName ?? this.userName,
       userCategories: userCategories ?? this.userCategories,
+      userIncomeCategories:
+          userIncomeCategories ?? this.userIncomeCategories,
+      userExpenseCategories:
+          userExpenseCategories ?? this.userExpenseCategories,
     );
   }
 }

@@ -36,7 +36,7 @@ class TransactionTile extends StatelessWidget {
               )
             : CircleAvatar(
                 backgroundColor: (isIncome ? Colors.green : Colors.red)
-                    .withOpacity(0.12),
+                    .withValues(alpha: 0.12),
                 child: Icon(
                   isIncome
                       ? Icons.arrow_downward_rounded

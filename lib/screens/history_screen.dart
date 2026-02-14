@@ -106,7 +106,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: typeFilter,
+                        initialValue: typeFilter,
                         items: const ["All", "Income", "Expense"]
                             .map(
                               (v) => DropdownMenuItem(value: v, child: Text(v)),
@@ -120,7 +120,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: monthFilter,
+                        initialValue: monthFilter,
                         items:
                             [
                                   "All",
@@ -143,7 +143,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: categoryFilter,
+                  initialValue: categoryFilter,
                   items: ["All", ...cats.toList()..sort()]
                       .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                       .toList(),

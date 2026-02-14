@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../models/staged_transaction_draft.dart';
 import '../utils/date_utils.dart';
@@ -10,6 +11,7 @@ import '../widgets/add_transaction_modal.dart';
 import '../widgets/summary_card.dart';
 import '../data/transaction_repository.dart';
 import '../core/api/api_client.dart';
+import '../core/auth/auth_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -64,18 +66,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
-      final drafts = StagedTransactionDraft.fromUploadResponse(decoded);
+      final drafts = await _extractStagingDrafts(decoded);
 
       if (!mounted) return;
 
       if (drafts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No transactions detected in PDF")),
+          const SnackBar(content: Text("No staged transactions found")),
         );
         return;
       }
 
-      await _openStagingReview(drafts);
+      final selectedUserCats = context
+          .read<AuthProvider>()
+          .state
+          .effectiveExpenseCategories;
+      final selectedIncomeCats = context
+          .read<AuthProvider>()
+          .state
+          .effectiveIncomeCategories;
+
+      final needsIncomeReview = drafts.any((d) => d.type == TxType.income);
+      final needsExpenseReview = drafts.any((d) => d.type == TxType.expense);
+
+      if (needsIncomeReview && selectedIncomeCats.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please add income categories in Settings before confirming staged income transactions.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (needsExpenseReview && selectedUserCats.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please add expense categories in Settings before confirming staged expense transactions.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final accepted = await _openStagingReview(
+        drafts,
+        incomeCategories: selectedIncomeCats,
+        expenseCategories: selectedUserCats,
+      );
+
+      if (!mounted || accepted == null) return;
+
+      if (accepted.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No transactions selected to confirm')),
+        );
+        return;
+      }
+
+      await _confirmStagedTransactions(accepted);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -86,244 +137,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _openStagingReview(List<StagedTransactionDraft> drafts) async {
-    final edited = List<StagedTransactionDraft>.from(drafts);
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final acceptedCount = edited.where((e) => e.accepted).length;
-            return SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Review extracted transactions',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Text('$acceptedCount/${edited.length} selected'),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: edited.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, index) {
-                          final d = edited[index];
-                          return Card(
-                            child: ListTile(
-                              onTap: () async {
-                                final updated = await _editDraftDialog(d);
-                                if (updated != null) {
-                                  setSheetState(() => edited[index] = updated);
-                                }
-                              },
-                              leading: Checkbox(
-                                value: d.accepted,
-                                onChanged: (v) {
-                                  setSheetState(
-                                    () => edited[index] = d.copyWith(
-                                      accepted: v ?? false,
-                                    ),
-                                  );
-                                },
-                              ),
-                              title: Text(
-                                '${d.type == TxType.income ? 'Income' : 'Expense'} • ${d.category}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${DateUtilsX.yyyyMmDd(d.date)}\n${d.description ?? 'No description'}',
-                              ),
-                              isThreeLine: true,
-                              trailing: Text(
-                                d.amount.toStringAsFixed(2),
-                                style: TextStyle(
-                                  color: d.type == TxType.income
-                                      ? Colors.green.shade700
-                                      : Colors.red.shade700,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: acceptedCount == 0
-                                ? null
-                                : () async {
-                                    final accepted = edited
-                                        .where((e) => e.accepted)
-                                        .toList();
-                                    await _confirmStagedTransactions(accepted);
-                                    if (mounted) Navigator.pop(context);
-                                  },
-                            child: const Text('Confirm'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+  Future<List<StagedTransactionDraft>?> _openStagingReview(
+    List<StagedTransactionDraft> drafts, {
+    required List<String> incomeCategories,
+    required List<String> expenseCategories,
+  }) async {
+    return Navigator.of(context).push<List<StagedTransactionDraft>>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _StagingReviewScreen(
+          drafts: drafts,
+          incomeCategories: incomeCategories,
+          expenseCategories: expenseCategories,
+        ),
+      ),
     );
   }
 
-  Future<StagedTransactionDraft?> _editDraftDialog(
-    StagedTransactionDraft draft,
+  Future<List<StagedTransactionDraft>> _extractStagingDrafts(
+    dynamic decoded,
   ) async {
-    final amountCtrl = TextEditingController(text: draft.amount.toString());
-    final categoryCtrl = TextEditingController(text: draft.category);
-    final descCtrl = TextEditingController(text: draft.description ?? '');
-    TxType type = draft.type;
-    DateTime date = draft.date;
+    final inline = StagedTransactionDraft.fromUploadResponse(decoded);
+    if (inline.isNotEmpty) return inline;
 
-    final updated = await showDialog<StagedTransactionDraft>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Edit transaction'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<TxType>(
-                      value: type,
-                      items: const [
-                        DropdownMenuItem(
-                          value: TxType.income,
-                          child: Text('Income'),
-                        ),
-                        DropdownMenuItem(
-                          value: TxType.expense,
-                          child: Text('Expense'),
-                        ),
-                      ],
-                      onChanged: (v) {
-                        if (v != null) setState(() => type = v);
-                      },
-                      decoration: const InputDecoration(labelText: 'Type'),
-                    ),
-                    TextField(
-                      controller: categoryCtrl,
-                      decoration: const InputDecoration(labelText: 'Category'),
-                    ),
-                    TextField(
-                      controller: amountCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Amount'),
-                    ),
-                    TextField(
-                      controller: descCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Date'),
-                      subtitle: Text(DateUtilsX.yyyyMmDd(date)),
-                      trailing: const Icon(Icons.calendar_month_rounded),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          firstDate: DateTime(2020, 1, 1),
-                          lastDate: DateTime(2035, 12, 31),
-                          initialDate: date,
-                        );
-                        if (picked != null) setState(() => date = picked);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final amount = double.tryParse(amountCtrl.text.trim());
-                    if (amount == null || amount <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Enter valid amount')),
-                      );
-                      return;
-                    }
+    final listEndpoints = ['/staging-transactions'];
 
-                    Navigator.pop(
-                      context,
-                      draft.copyWith(
-                        type: type,
-                        category: categoryCtrl.text.trim().isEmpty
-                            ? 'Misc'
-                            : categoryCtrl.text.trim(),
-                        amount: amount,
-                        description: descCtrl.text.trim().isEmpty
-                            ? null
-                            : descCtrl.text.trim(),
-                        date: date,
-                      ),
-                    );
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+    for (final path in listEndpoints) {
+      final res = await ApiClient.get(path);
+      if (res.statusCode < 200 || res.statusCode >= 300 || res.body.isEmpty) {
+        continue;
+      }
 
-    amountCtrl.dispose();
-    categoryCtrl.dispose();
-    descCtrl.dispose();
+      try {
+        final parsed = jsonDecode(res.body);
+        final drafts = StagedTransactionDraft.fromUploadResponse(parsed);
+        if (drafts.isNotEmpty) return drafts;
+      } catch (_) {
+        // Try next endpoint.
+      }
 
-    return updated;
+    }
+
+    return [];
   }
 
   Future<void> _confirmStagedTransactions(
@@ -332,37 +187,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final payload = {
       'transactions': accepted.map((e) => e.toConfirmJson()).toList(),
     };
+    final res = await ApiClient.post('/confirm-staging-transactions', payload);
 
-    final candidatePaths = [
-      '/upload-pdf/confirm',
-      '/confirm-upload-pdf',
-      '/transactions/confirm',
-    ];
-
-    String? lastError;
-    for (final path in candidatePaths) {
-      final res = await ApiClient.post(path, payload);
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        await TransactionRepository.refresh();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transactions confirmed and saved')),
-        );
-        return;
-      }
-
-      if (res.statusCode == 404 || res.statusCode == 405) {
-        lastError = 'Endpoint $path not available';
-        continue;
-      }
-
-      lastError = 'Confirm failed: ${res.statusCode} - ${res.body}';
-      break;
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      await TransactionRepository.refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Transactions confirmed and saved')),
+      );
+      return;
     }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(lastError ?? 'Failed to confirm transactions')),
+      SnackBar(
+        content: Text('Confirm failed: ${res.statusCode} - ${res.body}'),
+      ),
     );
   }
 
@@ -508,6 +348,216 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _StagingReviewScreen extends StatefulWidget {
+  final List<StagedTransactionDraft> drafts;
+  final List<String> incomeCategories;
+  final List<String> expenseCategories;
+
+  const _StagingReviewScreen({
+    required this.drafts,
+    required this.incomeCategories,
+    required this.expenseCategories,
+  });
+
+  @override
+  State<_StagingReviewScreen> createState() => _StagingReviewScreenState();
+}
+
+class _StagingReviewScreenState extends State<_StagingReviewScreen> {
+  late final List<StagedTransactionDraft> _edited;
+
+  @override
+  void initState() {
+    super.initState();
+    _edited = List<StagedTransactionDraft>.from(widget.drafts);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final acceptedCount = _edited.where((e) => e.accepted).length;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Review staged transactions'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '$acceptedCount/${_edited.length} selected',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: acceptedCount == 0
+                      ? null
+                      : () {
+                          Navigator.pop(
+                            context,
+                            _edited.where((e) => e.accepted).toList(),
+                          );
+                        },
+                  child: const Text('Confirm'),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(12),
+              itemCount: _edited.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (_, index) {
+                final item = _edited[index];
+                final categoryOptions = item.type == TxType.income
+                    ? widget.incomeCategories
+                    : widget.expenseCategories;
+                final safeCategory = categoryOptions.contains(item.category)
+                    ? item.category
+                    : (categoryOptions.isNotEmpty
+                          ? categoryOptions.first
+                          : item.category);
+
+                if (safeCategory != item.category) {
+                  _edited[index] = item.copyWith(category: safeCategory);
+                }
+
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: item.accepted,
+                              onChanged: (v) {
+                                setState(
+                                  () => _edited[index] = item.copyWith(
+                                    accepted: v ?? false,
+                                  ),
+                                );
+                              },
+                            ),
+                            Expanded(
+                              child: Text(
+                                item.description ?? 'No description',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              item.amount.toStringAsFixed(2),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: item.type == TxType.income
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Predicted: '
+                          '${item.predicted_type == TxType.income ? 'Income' : 'Expense'} '
+                          '• ${item.predicted_category}',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<TxType>(
+                                initialValue: item.type,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: TxType.income,
+                                    child: Text('Income'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: TxType.expense,
+                                    child: Text('Expense'),
+                                  ),
+                                ],
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  final nextOptions = v == TxType.income
+                                      ? widget.incomeCategories
+                                      : widget.expenseCategories;
+                                  final nextCategory =
+                                      nextOptions.contains(item.category)
+                                      ? item.category
+                                      : (nextOptions.isNotEmpty
+                                            ? nextOptions.first
+                                            : item.category);
+
+                                  setState(
+                                    () => _edited[index] = item.copyWith(
+                                      type: v,
+                                      category: nextCategory,
+                                    ),
+                                  );
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Type',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                initialValue: safeCategory,
+                                items: categoryOptions
+                                    .map(
+                                      (c) => DropdownMenuItem(
+                                        value: c,
+                                        child: Text(c),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  setState(
+                                    () => _edited[index] = item.copyWith(
+                                      category: v,
+                                    ),
+                                  );
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Category',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
