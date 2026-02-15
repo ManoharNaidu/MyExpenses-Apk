@@ -129,6 +129,7 @@ class AuthProvider extends ChangeNotifier {
     List<String>? userCategories,
     List<String>? userIncomeCategories,
     List<String>? userExpenseCategories,
+    String? userCurrency,
   }) {
     return AuthState(
       isLoading: isLoading ?? _state.isLoading,
@@ -141,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
       userIncomeCategories: userIncomeCategories ?? _state.userIncomeCategories,
       userExpenseCategories:
           userExpenseCategories ?? _state.userExpenseCategories,
+      userCurrency: userCurrency ?? _state.userCurrency,
     );
   }
 
@@ -155,6 +157,7 @@ class AuthProvider extends ChangeNotifier {
       'id': _state.userId,
       'email': _state.userEmail,
       'name': _state.userName,
+      'currency': _state.userCurrency,
       'user_categories': userCategories,
       'categories': _state.userCategories ?? <String>[],
       'income_category': _state.userIncomeCategories ?? <String>[],
@@ -181,6 +184,7 @@ class AuthProvider extends ChangeNotifier {
         userId: data['id']?.toString(),
         userEmail: data['email']?.toString(),
         userName: data['name']?.toString(),
+        userCurrency: data['currency']?.toString(),
         userCategories: categoriesList,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
@@ -227,6 +231,7 @@ class AuthProvider extends ChangeNotifier {
           userId: data["id"]?.toString(),
           userEmail: data["email"],
           userName: data["name"],
+          userCurrency: data["currency"]?.toString(),
           userCategories: categoriesList,
           userIncomeCategories: incomeCategories,
           userExpenseCategories: expenseCategories,
@@ -288,12 +293,15 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String email,
     required String password,
+    String? currency,
   }) async {
     try {
       final res = await ApiClient.post("/auth/register", {
         "name": name,
         "email": email,
         "password": password,
+        if (currency != null && currency.trim().isNotEmpty)
+          "currency": currency.trim().toUpperCase(),
       }, requiresAuth: false);
 
       ApiClient.ensureSuccess(res, fallbackMessage: 'Registration failed');
@@ -366,6 +374,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _state.userId,
         userEmail: _state.userEmail,
         userName: _state.userName,
+        userCurrency: _state.userCurrency,
         userCategories: resolvedCategories,
         userIncomeCategories: resolvedIncomeCategories,
         userExpenseCategories: resolvedExpenseCategories,
@@ -392,6 +401,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _state.userId,
         userEmail: _state.userEmail,
         userName: newName,
+        userCurrency: _state.userCurrency,
         userIncomeCategories: _state.userIncomeCategories,
         userExpenseCategories: _state.userExpenseCategories,
         userCategories: _state.userCategories,
@@ -462,6 +472,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _state.userId,
         userEmail: _state.userEmail,
         userName: _state.userName,
+        userCurrency: _state.userCurrency,
         userCategories: mergedCategories,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
@@ -471,6 +482,26 @@ class AuthProvider extends ChangeNotifier {
       debugPrint("✅ Categories updated successfully");
     } catch (e) {
       debugPrint("❌ Error updating categories: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> updateCurrency(String currency) async {
+    try {
+      final normalized = currency.trim().toUpperCase();
+      debugPrint("💱 Updating currency to: $normalized");
+      final res = await ApiClient.put("/settings/currency", {
+        "currency": normalized,
+      });
+
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update currency');
+
+      _state = _copyState(userCurrency: normalized);
+      await _saveProfileCache();
+      notifyListeners();
+      debugPrint("✅ Currency updated successfully");
+    } catch (e) {
+      debugPrint("❌ Error updating currency: $e");
       rethrow;
     }
   }

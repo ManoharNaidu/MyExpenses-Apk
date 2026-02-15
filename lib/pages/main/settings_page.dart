@@ -35,6 +35,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final userEmail = authProvider.state.userEmail ?? "";
     final userIncomeCategories = authProvider.state.effectiveIncomeCategories;
     final userExpenseCategories = authProvider.state.effectiveExpenseCategories;
+    final userCurrency = authProvider.state.effectiveCurrency;
     final userCategories = {...userIncomeCategories, ...userExpenseCategories}.toList();
 
     return Padding(
@@ -138,6 +139,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.currency_exchange_outlined),
+                  title: const Text("Change Currency"),
+                  subtitle: Text(userCurrency),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showChangeCurrencyDialog(context, userCurrency),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.category_outlined),
                   title: const Text("Edit Categories"),
                   subtitle: Text(
@@ -183,6 +192,78 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+
+  void _showChangeCurrencyDialog(BuildContext context, String currentCurrency) {
+    final currencyController = TextEditingController(text: currentCurrency);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Change Currency"),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: currencyController,
+            textCapitalization: TextCapitalization.characters,
+            maxLength: 3,
+            decoration: const InputDecoration(
+              labelText: "Currency Code",
+              hintText: "e.g. AUD, USD, INR",
+              border: OutlineInputBorder(),
+              counterText: "",
+            ),
+            validator: (value) {
+              final code = (value ?? '').trim().toUpperCase();
+              if (code.isEmpty) {
+                return "Currency is required";
+              }
+              if (!RegExp(r'^[A-Z]{3}$').hasMatch(code)) {
+                return "Use a valid 3-letter currency code";
+              }
+              return null;
+            },
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final code = currencyController.text.trim().toUpperCase();
+
+              try {
+                await context.read<AuthProvider>().updateCurrency(code);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  await showAppFeedbackDialog(
+                    context,
+                    title: 'Success',
+                    message: 'Currency updated to $code.',
+                    type: AppFeedbackType.success,
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  await showAppFeedbackDialog(
+                    context,
+                    title: 'Update Failed',
+                    message: '$e',
+                    type: AppFeedbackType.error,
+                  );
+                }
+              }
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    ).whenComplete(currencyController.dispose);
   }
 
   void _showChangeNameDialog(BuildContext context, String currentName) {

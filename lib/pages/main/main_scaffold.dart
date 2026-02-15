@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/auth/auth_provider.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../screens/dashboard_screen.dart';
 import '../../screens/history_screen.dart';
@@ -115,8 +116,33 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final currency = context.watch<AuthProvider>().state.effectiveCurrency;
+    final theme = Theme.of(context);
+    final currencyBg = Color.alphaBlend(
+      Colors.black.withValues(alpha: 0.55),
+      theme.colorScheme.surface,
+    );
+
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 84,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: currencyBg,
+              child: Text(
+                currency,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
         title: Text(titles[index]),
         actions: index == 0
             ? [
