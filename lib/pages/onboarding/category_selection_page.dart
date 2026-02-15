@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/categories.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
+import '../../widgets/app_feedback_dialog.dart';
 
 class CategorySelectionPage extends StatefulWidget {
   const CategorySelectionPage({super.key});
@@ -222,7 +223,7 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
               child: ElevatedButton(
                 onPressed: (selectedIncome.isEmpty && selectedExpense.isEmpty)
                     ? null
-                    : () {
+                    : () async {
                         final incomeList = selectedIncome.toList();
                         final expenseList = selectedExpense.toList();
                         final categoriesList = {...incomeList, ...expenseList}
@@ -232,11 +233,21 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                           "🎯 Onboarding categories income=$incomeList expense=$expenseList",
                         );
 
-                        context.read<AuthProvider>().markOnboarded(
-                          categories: categoriesList,
-                          incomeCategories: incomeList,
-                          expenseCategories: expenseList,
-                        );
+                        try {
+                          await context.read<AuthProvider>().markOnboarded(
+                            categories: categoriesList,
+                            incomeCategories: incomeList,
+                            expenseCategories: expenseList,
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          await showAppFeedbackDialog(
+                            context,
+                            title: 'Onboarding Failed',
+                            message: '$e',
+                            type: AppFeedbackType.error,
+                          );
+                        }
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
@@ -258,8 +269,18 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
               width: double.infinity,
               height: 50,
               child: TextButton(
-                onPressed: () {
-                  context.read<AuthProvider>().markOnboarded();
+                onPressed: () async {
+                  try {
+                    await context.read<AuthProvider>().markOnboarded();
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    await showAppFeedbackDialog(
+                      context,
+                      title: 'Onboarding Failed',
+                      message: '$e',
+                      type: AppFeedbackType.error,
+                    );
+                  }
                 },
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.textSoft,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
+import '../../widgets/app_feedback_dialog.dart';
 
 class RegisterForm extends StatefulWidget {
   const RegisterForm({super.key});
@@ -39,11 +40,11 @@ class _RegisterFormState extends State<RegisterForm> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Registration failed: $e'),
-            backgroundColor: Colors.red,
-          ),
+        await showAppFeedbackDialog(
+          context,
+          title: 'Registration Failed',
+          message: '$e',
+          type: AppFeedbackType.error,
         );
       }
     } finally {

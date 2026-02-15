@@ -1,5 +1,13 @@
 enum TxType { income, expense }
 
+TxType _parseTxType(dynamic rawType) {
+  final value = (rawType ?? '').toString().toLowerCase().trim();
+  if (value == 'income' || value == 'credit') {
+    return TxType.income;
+  }
+  return TxType.expense;
+}
+
 class TransactionModel {
   String? id;
   String? userId;
@@ -31,7 +39,7 @@ class TransactionModel {
           ? DateTime.parse(json['original_date'])
           : date,
       description: json['description'] as String?,
-      type: json['type'] == 'Income' ? TxType.income : TxType.expense,
+      type: _parseTxType(json['type']),
       category: json['category'],
       amount: (json['amount'] as num).toDouble(),
     );
@@ -43,7 +51,7 @@ class TransactionModel {
       'date': date.toIso8601String().split('T')[0], // date only (YYYY-MM-DD)
       'original_date': originalDate.toIso8601String().split('T')[0],
       'description': description,
-      'type': type == TxType.income ? 'Income' : 'Expense',
+      'type': type == TxType.income ? 'income' : 'expense',
       'category': category,
       'amount': amount,
     };

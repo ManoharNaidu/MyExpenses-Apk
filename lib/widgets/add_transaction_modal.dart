@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../data/transaction_repository.dart';
 import '../core/auth/auth_provider.dart';
+import 'app_feedback_dialog.dart';
 
 class AddTransactionModal extends StatefulWidget {
   final TransactionModel? existing;
@@ -234,9 +235,12 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   Future<void> _save() async {
     final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
-      ScaffoldMessenger.of(
+      await showAppFeedbackDialog(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Enter a valid amount")));
+        title: 'Invalid Amount',
+        message: 'Please enter a valid amount.',
+        type: AppFeedbackType.error,
+      );
       return;
     }
 
@@ -268,9 +272,12 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        await showAppFeedbackDialog(
           context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+          title: 'Transaction Failed',
+          message: '$e',
+          type: AppFeedbackType.error,
+        );
       }
     }
   }

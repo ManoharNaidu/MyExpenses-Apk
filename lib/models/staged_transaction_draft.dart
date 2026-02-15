@@ -51,21 +51,10 @@ class StagedTransactionDraft {
 
   Map<String, dynamic> toConfirmJson() {
     return {
-      if (stagingId != null) 'staging_id': stagingId,
-      'date': date.toIso8601String().split('T').first,
-      // Confirmed values sent using backend-expected key names.
-      'predicted_type': type == TxType.income ? 'income' : 'expense',
-      'predicted_category': category,
-      // Optional trace fields for original model output before user edits.
-      'original_predicted_type': predicted_type == TxType.income
-          ? 'income'
-          : 'expense',
-      'original_predicted_category': predicted_category,
-      // Backward compatibility if backend still reads generic keys.
-      'type': type == TxType.income ? 'income' : 'expense',
-      'category': category,
-      'amount': amount,
-      'description': description,
+      // Backend route `/confirm-staging-transactions` expects this exact shape.
+      'id': stagingId,
+      'final_type': type == TxType.income ? 'income' : 'expense',
+      'final_category': category,
     };
   }
 

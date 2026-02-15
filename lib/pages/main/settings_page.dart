@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/categories.dart';
 import '../../core/notifications/notification_service.dart';
+import '../../widgets/app_feedback_dialog.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -223,15 +224,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   );
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Name updated successfully")),
+                    await showAppFeedbackDialog(
+                      context,
+                      title: 'Success',
+                      message: 'Name updated successfully.',
+                      type: AppFeedbackType.success,
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(
+                    await showAppFeedbackDialog(
                       context,
-                    ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      title: 'Update Failed',
+                      message: '$e',
+                      type: AppFeedbackType.error,
+                    );
                   }
                 }
               }
@@ -314,15 +321,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   );
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Password updated successfully")),
+                    await showAppFeedbackDialog(
+                      context,
+                      title: 'Success',
+                      message: 'Password updated successfully.',
+                      type: AppFeedbackType.success,
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(
+                    await showAppFeedbackDialog(
                       context,
-                    ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      title: 'Update Failed',
+                      message: '$e',
+                      type: AppFeedbackType.error,
+                    );
                   }
                 }
               }
@@ -426,19 +439,22 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "Income & expense categories updated successfully",
-                              ),
-                            ),
+                          await showAppFeedbackDialog(
+                            context,
+                            title: 'Success',
+                            message:
+                                'Income & expense categories updated successfully.',
+                            type: AppFeedbackType.success,
                           );
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(
+                          await showAppFeedbackDialog(
                             context,
-                          ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                            title: 'Update Failed',
+                            message: '$e',
+                            type: AppFeedbackType.error,
+                          );
                         }
                       }
                     },

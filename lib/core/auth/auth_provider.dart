@@ -19,6 +19,106 @@ class AuthProvider extends ChangeNotifier {
     return <String>[];
   }
 
+  ({List<String> income, List<String> expense}) _extractCategories(
+    Map<String, dynamic> data,
+  ) {
+    final userCategoriesRaw = data['user_categories'];
+    if (userCategoriesRaw is List) {
+      final income = <String>[];
+      final expense = <String>[];
+
+      for (final item in userCategoriesRaw) {
+        if (item is! Map) continue;
+        final type = item['type']?.toString().toLowerCase().trim();
+        final category = item['category']?.toString().trim();
+        if (category == null || category.isEmpty) continue;
+
+        if (type == 'income') {
+          income.add(category);
+        } else if (type == 'expense') {
+          expense.add(category);
+        }
+      }
+
+      return (income: income, expense: expense);
+    }
+
+    // Some backends return categories as an object:
+    // { income_categories: [...], expense_categories: [...] }
+    final categoriesRaw = data['categories'];
+    if (categoriesRaw is Map) {
+      final income = _toStringList(categoriesRaw['income_categories']);
+      final expense = _toStringList(categoriesRaw['expense_categories']);
+      if (income.isNotEmpty || expense.isNotEmpty) {
+        return (income: income, expense: expense);
+      }
+    }
+
+    // Some backends return categories as [{income_category, expense_category}].
+    if (categoriesRaw is List) {
+      final income = <String>[];
+      final expense = <String>[];
+
+      for (final item in categoriesRaw) {
+        if (item is! Map) continue;
+        final incomeCategory = item['income_category']?.toString().trim();
+        final expenseCategory = item['expense_category']?.toString().trim();
+
+        if (incomeCategory != null && incomeCategory.isNotEmpty) {
+          income.add(incomeCategory);
+        }
+        if (expenseCategory != null && expenseCategory.isNotEmpty) {
+          expense.add(expenseCategory);
+        }
+      }
+
+      if (income.isNotEmpty || expense.isNotEmpty) {
+        return (income: income, expense: expense);
+      }
+    }
+
+    // Backward compatibility with older API response fields.
+    final incomeCategories = _toStringList(
+      data['income_category'] ?? data['income_categories'],
+    );
+    final expenseCategories = _toStringList(
+      data['expense_cateogry'] ?? data['expense_categories'],
+    );
+
+    return (income: incomeCategories, expense: expenseCategories);
+  }
+
+  List<Map<String, String>> _buildUserCategoriesPayload({
+    required List<String> incomeCategories,
+    required List<String> expenseCategories,
+  }) {
+    final income = incomeCategories
+        .where((c) => c.trim().isNotEmpty)
+        .map((c) => {'type': 'income', 'category': c.trim()});
+    final expense = expenseCategories
+        .where((c) => c.trim().isNotEmpty)
+        .map((c) => {'type': 'expense', 'category': c.trim()});
+
+    return [...income, ...expense];
+  }
+
+  List<Map<String, String?>> _buildCategoryPairsPayload({
+    required List<String> incomeCategories,
+    required List<String> expenseCategories,
+  }) {
+    return List.generate(
+      math.max(incomeCategories.length, expenseCategories.length),
+      (index) => {
+        'income_category':
+            index < incomeCategories.length ? incomeCategories[index].trim() : null,
+        'expense_category':
+            index < expenseCategories.length
+            ? expenseCategories[index].trim()
+            : null,
+      },
+    );
+  }
+
   AuthState _copyState({
     bool? isLoading,
     bool? isLoggedIn,
@@ -45,11 +145,17 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _saveProfileCache() async {
+    final userCategories = _buildUserCategoriesPayload(
+      incomeCategories: _state.userIncomeCategories ?? <String>[],
+      expenseCategories: _state.userExpenseCategories ?? <String>[],
+    );
+
     final payload = {
       'is_onboarded': _state.isOnboarded,
       'id': _state.userId,
       'email': _state.userEmail,
       'name': _state.userName,
+      'user_categories': userCategories,
       'categories': _state.userCategories ?? <String>[],
       'income_category': _state.userIncomeCategories ?? <String>[],
       'expense_cateogry': _state.userExpenseCategories ?? <String>[],
@@ -64,12 +170,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       final data = jsonDecode(raw) as Map<String, dynamic>;
       final categoriesList = _toStringList(data['categories']);
-      final incomeCategories = _toStringList(
-        data['income_category'] ?? data['income_categories'],
-      );
-      final expenseCategories = _toStringList(
-        data['expense_cateogry'] ?? data['expense_categories'],
-      );
+      final parsedCategories = _extractCategories(data);
+      final incomeCategories = parsedCategories.income;
+      final expenseCategories = parsedCategories.expense;
 
       _state = AuthState(
         isLoading: false,
@@ -112,13 +215,10 @@ class AuthProvider extends ChangeNotifier {
         final data = jsonDecode(res.body);
         debugPrint("👤 User data: $data");
 
-        final categoriesList = _toStringList(data["categories"]);
-        final incomeCategories = _toStringList(
-          data["income_category"] ?? data["income_categories"],
-        );
-        final expenseCategories = _toStringList(
-          data["expense_cateogry"] ?? data["expense_categories"],
-        );
+        final parsedCategories = _extractCategories(data);
+        final incomeCategories = parsedCategories.income;
+        final expenseCategories = parsedCategories.expense;
+        final categoriesList = {...incomeCategories, ...expenseCategories}.toList();
 
         _state = AuthState(
           isLoading: false,
@@ -235,24 +335,21 @@ class AuthProvider extends ChangeNotifier {
         "📦 Onboarding with income: $resolvedIncomeCategories expense: $resolvedExpenseCategories categories: $resolvedCategories",
       );
 
-      final categoryPairs = List.generate(
-        math.max(
-          resolvedIncomeCategories.length,
-          resolvedExpenseCategories.length,
-        ),
-        (index) => {
-          "income_category": index < resolvedIncomeCategories.length
-              ? resolvedIncomeCategories[index]
-              : null,
-          "expense_category": index < resolvedExpenseCategories.length
-              ? resolvedExpenseCategories[index]
-              : null,
-        },
+      final cleanedIncome = resolvedIncomeCategories
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      final cleanedExpense = resolvedExpenseCategories
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      final categoryPairs = _buildCategoryPairsPayload(
+        incomeCategories: cleanedIncome,
+        expenseCategories: cleanedExpense,
       );
 
       final payload = {
-        // Backend expects categories as list of objects containing
-        // income_category + expense_category.
         "categories": categoryPairs,
       };
 
@@ -282,20 +379,7 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint("❌ Onboarding error: $e");
-      // Fallback: mark as onboarded locally even if API fails
-      _state = AuthState(
-        isLoading: false,
-        isLoggedIn: true,
-        isOnboarded: true,
-        userId: _state.userId,
-        userEmail: _state.userEmail,
-        userName: _state.userName,
-        userCategories: resolvedCategories,
-        userIncomeCategories: resolvedIncomeCategories,
-        userExpenseCategories: resolvedExpenseCategories,
-      );
-      await _saveProfileCache();
-      notifyListeners();
+      rethrow;
     }
   }
 
@@ -356,28 +440,28 @@ class AuthProvider extends ChangeNotifier {
     required List<String> expenseCategories,
   }) async {
     try {
-      final mergedCategories = {...incomeCategories, ...expenseCategories}.toList();
-      final categoryPairs = List.generate(
-        math.max(incomeCategories.length, expenseCategories.length),
-        (index) => {
-          "income_category":
-              index < incomeCategories.length ? incomeCategories[index] : null,
-          "expense_category":
-              index < expenseCategories.length ? expenseCategories[index] : null,
-        },
+      final mergedCategories = {
+        ...incomeCategories,
+        ...expenseCategories,
+      }.toList();
+      final cleanedIncome = incomeCategories
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      final cleanedExpense = expenseCategories
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      final categoryPairs = _buildCategoryPairsPayload(
+        incomeCategories: cleanedIncome,
+        expenseCategories: cleanedExpense,
       );
 
       debugPrint(
         "📦 Updating categories income=$incomeCategories expense=$expenseCategories",
       );
       final res = await ApiClient.put("/settings/categories", {
-        // Backend validates categories as list of objects.
         "categories": categoryPairs,
-        // Optional compatibility fields.
-        "all_categories": mergedCategories,
-        "income_category": incomeCategories,
-        "expense_category": expenseCategories,
-        "expense_cateogry": expenseCategories,
       });
 
       if (res.statusCode == 200) {

@@ -8,6 +8,7 @@ import '../../screens/analytics_screen.dart';
 import 'settings_page.dart';
 import '../../data/transaction_repository.dart';
 import '../../utils/csv_export.dart';
+import '../../widgets/app_feedback_dialog.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -65,8 +66,11 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (selected == 'theme') {
       await context.read<ThemeProvider>().toggleTheme();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Theme updated')),
+      await showAppFeedbackDialog(
+        context,
+        title: 'Theme Updated',
+        message: 'Application theme updated successfully.',
+        type: AppFeedbackType.success,
       );
     }
   }
@@ -77,28 +81,33 @@ class _MainScaffoldState extends State<MainScaffold> {
       if (!mounted) return;
 
       if (txs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No transactions to export")),
+        await showAppFeedbackDialog(
+          context,
+          title: 'No Data',
+          message: 'No transactions to export.',
+          type: AppFeedbackType.error,
         );
         return;
       }
 
       final result = await CsvExport.exportTransactions(txs);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.openedShareSheet
-                ? "Export ready. Choose where to save/share the CSV."
-                : "Export started successfully",
-          ),
-        ),
+      await showAppFeedbackDialog(
+        context,
+        title: 'Export Ready',
+        message: result.openedShareSheet
+            ? 'Choose where to save/share the CSV file.'
+            : 'Export started successfully.',
+        type: AppFeedbackType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      await showAppFeedbackDialog(
         context,
-      ).showSnackBar(SnackBar(content: Text("Export failed: $e")));
+        title: 'Export Failed',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
     }
   }
 

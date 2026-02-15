@@ -8,6 +8,7 @@ import '../models/transaction_model.dart';
 import '../models/staged_transaction_draft.dart';
 import '../utils/date_utils.dart';
 import '../widgets/add_transaction_modal.dart';
+import '../widgets/app_feedback_dialog.dart';
 import '../widgets/summary_card.dart';
 import '../data/transaction_repository.dart';
 import '../core/api/api_client.dart';
@@ -44,8 +45,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (filePath == null && fileBytes == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to read selected PDF")),
+      await showAppFeedbackDialog(
+        context,
+        title: 'Upload Failed',
+        message: 'Unable to read selected PDF.',
+        type: AppFeedbackType.error,
       );
       return;
     }
@@ -71,8 +75,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
 
       if (drafts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No staged transactions found")),
+        await showAppFeedbackDialog(
+          context,
+          title: 'No Transactions Found',
+          message: 'No staged transactions were found in this file.',
+          type: AppFeedbackType.error,
         );
         return;
       }
@@ -90,23 +97,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final needsExpenseReview = drafts.any((d) => d.type == TxType.expense);
 
       if (needsIncomeReview && selectedIncomeCats.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        await showAppFeedbackDialog(
+          context,
+          title: 'Categories Required',
+          message:
               'Please add income categories in Settings before confirming staged income transactions.',
-            ),
-          ),
+          type: AppFeedbackType.error,
         );
         return;
       }
 
       if (needsExpenseReview && selectedUserCats.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+        await showAppFeedbackDialog(
+          context,
+          title: 'Categories Required',
+          message:
               'Please add expense categories in Settings before confirming staged expense transactions.',
-            ),
-          ),
+          type: AppFeedbackType.error,
         );
         return;
       }
@@ -120,8 +127,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted || accepted == null) return;
 
       if (accepted.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No transactions selected to confirm')),
+        await showAppFeedbackDialog(
+          context,
+          title: 'No Selection',
+          message: 'No transactions selected to confirm.',
+          type: AppFeedbackType.error,
         );
         return;
       }
@@ -129,9 +139,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _confirmStagedTransactions(accepted);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      await showAppFeedbackDialog(
         context,
-      ).showSnackBar(SnackBar(content: Text('Upload error: $e')));
+        title: 'Upload Error',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
     } finally {
       if (mounted) setState(() => _isUploadingPdf = false);
     }
@@ -175,7 +188,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } catch (_) {
         // Try next endpoint.
       }
-
     }
 
     return [];
@@ -184,25 +196,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _confirmStagedTransactions(
     List<StagedTransactionDraft> accepted,
   ) async {
-    final payload = {
-      'transactions': accepted.map((e) => e.toConfirmJson()).toList(),
-    };
-    final res = await ApiClient.post('/confirm-staging-transactions', payload);
+    final transactions = accepted
+        .where((e) => (e.stagingId ?? '').isNotEmpty)
+        .map((e) => e.toConfirmJson())
+        .toList();
+
+    if (transactions.isEmpty) {
+      if (!mounted) return;
+      await showAppFeedbackDialog(
+        context,
+        title: 'Invalid Selection',
+        message: 'No valid staged transactions selected to confirm.',
+        type: AppFeedbackType.error,
+      );
+      return;
+    }
+
+    final res = await ApiClient.post('/confirm-staging-transactions', {
+      'transactions': transactions,
+    });
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       await TransactionRepository.refresh();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transactions confirmed and saved')),
+      await showAppFeedbackDialog(
+        context,
+        title: 'Success',
+        message: 'Transactions confirmed and saved.',
+        type: AppFeedbackType.success,
       );
       return;
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Confirm failed: ${res.statusCode} - ${res.body}'),
-      ),
+    await showAppFeedbackDialog(
+      context,
+      title: 'Confirmation Failed',
+      message: '${res.statusCode} - ${res.body}',
+      type: AppFeedbackType.error,
     );
   }
 
