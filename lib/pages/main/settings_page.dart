@@ -171,6 +171,24 @@ class _SettingsPageState extends State<SettingsPage> {
                     setState(() => _notificationsEnabled = value);
                   },
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text("Privacy"),
+                  subtitle: const Text("How My Expenses handles your data"),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showPrivacyInfo(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text("About My Expenses"),
+                  subtitle: const Text(
+                    "App structure, architecture, and how it works",
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showAboutInfo(context),
+                ),
               ],
             ),
           ),
@@ -652,6 +670,136 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPrivacyInfo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Privacy in My Expenses",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "We aim to keep privacy simple and transparent.",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "1) What we store\n"
+                    "• Account details: your name, email, and preferences (like currency and categories).\n"
+                    "• Financial records: your transactions and categories you create.\n"
+                    "• Optional upload data: PDF statements you choose to upload for transaction extraction.",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "2) Why we store it\n"
+                    "• To show your dashboard/history accurately.\n"
+                    "• To provide features like filtering, analytics, export, and statement processing.\n"
+                    "• To personalize the app with your selected categories and settings.",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "3) Your control\n"
+                    "• You can edit profile details, categories, and currency from Settings.\n"
+                    "• You can add, edit, or delete transactions.\n"
+                    "• You can log out anytime.",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "4) Notifications\n"
+                    "• Notifications are optional and can be turned on/off from Settings.",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "5) Data sharing\n"
+                    "• Exporting data (CSV) only happens when you explicitly choose Export.\n"
+                    "• Uploaded files are sent only when you tap upload.",
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    "If you want stricter controls (like delete account/data request), we can add dedicated actions in Settings.",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAboutInfo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "About My Expenses",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "My Expenses is a personal finance app built to make money tracking clear and practical.",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "Core features\n"
+                    "• Add, edit, delete single transactions\n"
+                    "• Filter and review transaction history\n"
+                    "• Upload bank PDF and review extracted staged transactions\n"
+                    "• Export transactions to Excel/CSV\n"
+                    "• Manage account settings, categories, currency, and notifications",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "How the app is structured (simple view)\n"
+                    "• Auth: login/register and onboarding\n"
+                    "• Dashboard: current summaries + PDF upload flow\n"
+                    "• History: past transactions with filtering\n"
+                    "• Analytics: trend and summary charts\n"
+                    "• Settings: profile, password, categories, currency, notifications",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "Technical architecture (transparent)\n"
+                    "• UI layer: Flutter pages/widgets\n"
+                    "• State layer: provider-based app/auth/theme state\n"
+                    "• Data layer: repository + API client + secure/local storage\n"
+                    "• This separation keeps the app easier to maintain and safer to evolve.",
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "Design goal\n"
+                    "• Keep things understandable for everyday users: clear actions, plain language, and predictable behavior.",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
