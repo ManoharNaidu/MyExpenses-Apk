@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/categories.dart';
+import '../../core/constants/currencies.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
@@ -36,6 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final userIncomeCategories = authProvider.state.effectiveIncomeCategories;
     final userExpenseCategories = authProvider.state.effectiveExpenseCategories;
     final userCurrency = authProvider.state.effectiveCurrency;
+    final userCurrencyOption = currencyFromCode(userCurrency);
     final userCategories = {...userIncomeCategories, ...userExpenseCategories}.toList();
 
     return Padding(
@@ -141,9 +143,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.currency_exchange_outlined),
                   title: const Text("Change Currency"),
-                  subtitle: Text(userCurrency),
+                  subtitle: Text(userCurrencyOption.label),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showChangeCurrencyDialog(context, userCurrency),
+                  onTap: () =>
+                      _showChangeCurrencyDialog(context, userCurrencyOption.code),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -213,75 +216,72 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showChangeCurrencyDialog(BuildContext context, String currentCurrency) {
-    final currencyController = TextEditingController(text: currentCurrency);
-    final formKey = GlobalKey<FormState>();
+    final normalized = currentCurrency.trim().toUpperCase();
+    var selectedCurrency = supportedCurrencies.any((c) => c.code == normalized)
+        ? normalized
+        : supportedCurrencies.first.code;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Change Currency"),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: currencyController,
-            textCapitalization: TextCapitalization.characters,
-            maxLength: 3,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Change Currency"),
+          content: DropdownButtonFormField<String>(
+            initialValue: selectedCurrency,
             decoration: const InputDecoration(
-              labelText: "Currency Code",
-              hintText: "e.g. AUD, USD, INR",
+              labelText: "Currency",
               border: OutlineInputBorder(),
-              counterText: "",
             ),
-            validator: (value) {
-              final code = (value ?? '').trim().toUpperCase();
-              if (code.isEmpty) {
-                return "Currency is required";
-              }
-              if (!RegExp(r'^[A-Z]{3}$').hasMatch(code)) {
-                return "Use a valid 3-letter currency code";
-              }
-              return null;
+            items: supportedCurrencies
+                .map(
+                  (currency) => DropdownMenuItem<String>(
+                    value: currency.code,
+                    child: Text(currency.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => selectedCurrency = value);
             },
-            autofocus: true,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final code = currencyController.text.trim().toUpperCase();
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final code = selectedCurrency;
 
-              try {
-                await context.read<AuthProvider>().updateCurrency(code);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  await showAppFeedbackDialog(
-                    context,
-                    title: 'Success',
-                    message: 'Currency updated to $code.',
-                    type: AppFeedbackType.success,
-                  );
+                try {
+                  await context.read<AuthProvider>().updateCurrency(code);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    await showAppFeedbackDialog(
+                      context,
+                      title: 'Success',
+                      message: 'Currency updated to $code.',
+                      type: AppFeedbackType.success,
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    await showAppFeedbackDialog(
+                      context,
+                      title: 'Update Failed',
+                      message: '$e',
+                      type: AppFeedbackType.error,
+                    );
+                  }
                 }
-              } catch (e) {
-                if (context.mounted) {
-                  await showAppFeedbackDialog(
-                    context,
-                    title: 'Update Failed',
-                    message: '$e',
-                    type: AppFeedbackType.error,
-                  );
-                }
-              }
-            },
-            child: const Text("Save"),
-          ),
-        ],
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        ),
       ),
-    ).whenComplete(currencyController.dispose);
+    );
   }
 
   void _showChangeNameDialog(BuildContext context, String currentName) {

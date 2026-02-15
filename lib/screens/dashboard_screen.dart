@@ -13,6 +13,7 @@ import '../widgets/summary_card.dart';
 import '../data/transaction_repository.dart';
 import '../core/api/api_client.dart';
 import '../core/auth/auth_provider.dart';
+import '../core/constants/currencies.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -81,6 +82,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
+      await showAppFeedbackDialog(
+        context,
+        title: 'Upload Successful',
+        message:
+            'Your bank statement was uploaded and staged transactions are ready. Tap "Review staged transactions" on Dashboard to confirm them.',
+        type: AppFeedbackType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await showAppFeedbackDialog(
+        context,
+        title: 'Upload Error',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingPdf = false);
+    }
+  }
+
+  Future<void> _reviewStagedTransactions() async {
+    try {
+      final drafts = await _extractStagingDrafts(const []);
+      if (!mounted) return;
+
+      if (drafts.isEmpty) {
+        await showAppFeedbackDialog(
+          context,
+          title: 'No Pending Staged Transactions',
+          message:
+              'There are no staged transactions to review right now. Upload a bank statement first.',
+          type: AppFeedbackType.error,
+        );
+        return;
+      }
+
       final selectedUserCats = context
           .read<AuthProvider>()
           .state
@@ -138,12 +175,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!mounted) return;
       await showAppFeedbackDialog(
         context,
-        title: 'Upload Error',
+        title: 'Review Error',
         message: '$e',
         type: AppFeedbackType.error,
       );
-    } finally {
-      if (mounted) setState(() => _isUploadingPdf = false);
     }
   }
 
@@ -228,6 +263,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyCode = context.watch<AuthProvider>().state.effectiveCurrency;
+    final currencyOption = currencyFromCode(currencyCode);
+
+    String formatMoney(double amount) {
+      final sign = amount < 0 ? '-' : '';
+      final absValue = amount.abs().toStringAsFixed(2);
+      return '$sign${currencyOption.symbol}$absValue';
+    }
+
     return StreamBuilder<List<TransactionModel>>(
       stream: TransactionRepository.getTransactionsStream(),
       initialData: TransactionRepository.currentTransactions,
@@ -288,14 +332,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.currency_exchange_outlined),
+                    title: const Text('Active Currency'),
+                    subtitle: Text(
+                      '${currencyOption.symbol} ${currencyOption.code} • ${currencyOption.name}',
+                    ),
+                  ),
+                ),
                 SummaryCard(
                   title: "This Week (Net)",
-                  value: weekNet.toStringAsFixed(2),
+                  value: formatMoney(weekNet),
                   icon: Icons.date_range_rounded,
                 ),
                 SummaryCard(
                   title: "This Month (Net)",
-                  value: monthNet.toStringAsFixed(2),
+                  value: formatMoney(monthNet),
                   icon: Icons.calendar_month_rounded,
                 ),
                 const SizedBox(height: 8),
@@ -315,13 +368,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _reviewStagedTransactions,
+                    icon: const Icon(Icons.playlist_add_check_circle_outlined),
+                    label: const Text('Review staged transactions'),
+                  ),
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: SummaryCard(
                         title: "Week Income",
-                        value: weekIncome.toStringAsFixed(2),
+                        value: formatMoney(weekIncome),
                         icon: Icons.arrow_downward_rounded,
                       ),
                     ),
@@ -329,7 +391,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: SummaryCard(
                         title: "Week Expense",
-                        value: weekExpense.toStringAsFixed(2),
+                        value: formatMoney(weekExpense),
                         icon: Icons.arrow_upward_rounded,
                       ),
                     ),
@@ -351,8 +413,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
                           ),
                           trailing: Text(
-                            (t.type == TxType.income ? "+" : "-") +
-                                t.amount.toStringAsFixed(2),
+                            '${t.type == TxType.income ? "+" : "-"}${currencyOption.symbol}${t.amount.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
                               color: t.type == TxType.income

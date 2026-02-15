@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/categories.dart';
+import '../../core/constants/currencies.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
@@ -17,6 +18,20 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
   final Set<String> selectedExpense = {};
   final _incomeCtrl = TextEditingController();
   final _expenseCtrl = TextEditingController();
+  late String _selectedCurrency;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialCurrency =
+        context.read<AuthProvider>().state.effectiveCurrency;
+    final normalizedInitial = initialCurrency.trim().toUpperCase();
+    _selectedCurrency = supportedCurrencies.any(
+      (c) => c.code == normalizedInitial,
+    )
+        ? normalizedInitial
+        : supportedCurrencies.first.code;
+  }
 
   @override
   void dispose() {
@@ -71,6 +86,27 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
             const Text(
               "Pick both income and expense categories. You can add your own too.",
               style: TextStyle(fontSize: 14, color: AppTheme.textSoft),
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCurrency,
+              decoration: const InputDecoration(
+                labelText: "Preferred Currency",
+                prefixIcon: Icon(Icons.currency_exchange_outlined),
+                border: OutlineInputBorder(),
+              ),
+              items: supportedCurrencies
+                  .map(
+                    (currency) => DropdownMenuItem<String>(
+                      value: currency.code,
+                      child: Text(currency.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _selectedCurrency = value);
+              },
             ),
             const SizedBox(height: 24),
             Expanded(
@@ -224,6 +260,8 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                 onPressed: (selectedIncome.isEmpty && selectedExpense.isEmpty)
                     ? null
                     : () async {
+                        final currencyCode = _selectedCurrency;
+
                         final incomeList = selectedIncome.toList();
                         final expenseList = selectedExpense.toList();
                         final categoriesList = {...incomeList, ...expenseList}
@@ -234,7 +272,12 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                         );
 
                         try {
-                          await context.read<AuthProvider>().markOnboarded(
+                          final auth = context.read<AuthProvider>();
+                          if (currencyCode != auth.state.effectiveCurrency) {
+                            await auth.updateCurrency(currencyCode);
+                          }
+
+                          await auth.markOnboarded(
                             categories: categoriesList,
                             incomeCategories: incomeList,
                             expenseCategories: expenseList,
@@ -270,8 +313,14 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
               height: 50,
               child: TextButton(
                 onPressed: () async {
+                  final currencyCode = _selectedCurrency;
+
                   try {
-                    await context.read<AuthProvider>().markOnboarded();
+                    final auth = context.read<AuthProvider>();
+                    if (currencyCode != auth.state.effectiveCurrency) {
+                      await auth.updateCurrency(currencyCode);
+                    }
+                    await auth.markOnboarded();
                   } catch (e) {
                     if (!context.mounted) return;
                     await showAppFeedbackDialog(
