@@ -175,10 +175,10 @@ class TransactionRepository {
     final response = await ApiClient.get(
       '/transactions?limit=$limit&offset=$offset',
     );
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch transactions: ${response.statusCode}');
-    }
+    ApiClient.ensureSuccess(
+      response,
+      fallbackMessage: 'Failed to fetch transactions',
+    );
 
     final List<dynamic> data = jsonDecode(response.body);
     return data
@@ -282,61 +282,58 @@ class TransactionRepository {
 
   static Future<void> add(TransactionModel tx) async {
     final response = await ApiClient.post('/transactions', tx.toJson());
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      await _refreshLoadedWindow();
-      await NotificationService.show(
-        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        title: 'Transaction added',
-        body: '${tx.category} • ${tx.amount.toStringAsFixed(2)} saved',
-      );
-      return;
-    }
-    throw Exception('Failed to add transaction: ${response.body}');
+    ApiClient.ensureSuccess(response, fallbackMessage: 'Failed to add transaction');
+
+    await _refreshLoadedWindow();
+    await NotificationService.show(
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title: 'Transaction added',
+      body: '${tx.category} • ${tx.amount.toStringAsFixed(2)} saved',
+    );
   }
 
   static Future<void> delete(String id) async {
     final response = await ApiClient.delete('/transactions/$id');
-    if (response.statusCode == 200 || response.statusCode == 204) {
-      final beforeCount = _transactions.length;
-      _transactions.removeWhere((tx) => tx.id == id);
-      final didRemove = _transactions.length < beforeCount;
+    ApiClient.ensureSuccess(
+      response,
+      fallbackMessage: 'Failed to delete transaction',
+    );
 
-      if (didRemove) {
-        _offset = _transactions.length;
-        _emitCurrent();
-        await _saveToCache();
-      }
+    final beforeCount = _transactions.length;
+    _transactions.removeWhere((tx) => tx.id == id);
+    final didRemove = _transactions.length < beforeCount;
 
-      // Sync in background to avoid stale pagination/cached windows.
-      unawaited(_refreshLoadedWindow());
-
-      await NotificationService.show(
-        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        title: 'Transaction deleted',
-        body: 'A transaction was removed successfully',
-      );
-      return;
+    if (didRemove) {
+      _offset = _transactions.length;
+      _emitCurrent();
+      await _saveToCache();
     }
-    throw Exception('Failed to delete transaction: ${response.body}');
+
+    // Sync in background to avoid stale pagination/cached windows.
+    unawaited(_refreshLoadedWindow());
+
+    await NotificationService.show(
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title: 'Transaction deleted',
+      body: 'A transaction was removed successfully',
+    );
   }
 
   static Future<void> update(TransactionModel tx) async {
     final response = await ApiClient.put('/transactions/${tx.id}', tx.toJson());
-    if (response.statusCode == 200) {
-      if (tx.id != null) {
-        final index = _transactions.indexWhere((item) => item.id == tx.id);
-        if (index != -1) {
-          _transactions[index] = tx;
-          _emitCurrent();
-          await _saveToCache();
-        }
-      }
+    ApiClient.ensureSuccess(response, fallbackMessage: 'Failed to update transaction');
 
-      // Sync in background to keep list in-line with backend ordering/data.
-      unawaited(_refreshLoadedWindow());
-      return;
+    if (tx.id != null) {
+      final index = _transactions.indexWhere((item) => item.id == tx.id);
+      if (index != -1) {
+        _transactions[index] = tx;
+        _emitCurrent();
+        await _saveToCache();
+      }
     }
-    throw Exception('Failed to update transaction: ${response.body}');
+
+    // Sync in background to keep list in-line with backend ordering/data.
+    unawaited(_refreshLoadedWindow());
   }
 
   /// Refreshes currently loaded window size without switching back to polling.

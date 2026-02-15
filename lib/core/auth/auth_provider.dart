@@ -266,22 +266,18 @@ class AuthProvider extends ChangeNotifier {
         "password": password,
       }, requiresAuth: false);
 
-      debugPrint("📥 Login response: ${res.statusCode}");
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Login failed');
 
-      if (res.statusCode == 200 && res.body.isNotEmpty) {
+      if (res.body.isNotEmpty) {
         final data = jsonDecode(res.body);
-        debugPrint("📦 Login response data keys: ${data.keys}");
-
         if (data["access_token"] != null) {
-          debugPrint("✅ Access token found in response");
           await SecureStorage.saveToken(data["access_token"]);
           await loadSession();
-        } else {
-          throw Exception("No access_token in response: ${data.keys}");
+          return;
         }
-      } else {
-        throw Exception("Login failed: ${res.statusCode} - ${res.body}");
       }
+
+      throw ApiException(ApiClient.genericUnexpectedMessage);
     } catch (e) {
       debugPrint("❌ Login error: $e");
       rethrow;
@@ -300,13 +296,18 @@ class AuthProvider extends ChangeNotifier {
         "password": password,
       }, requiresAuth: false);
 
-      if (res.statusCode == 200 && res.body.isNotEmpty) {
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Registration failed');
+
+      if (res.body.isNotEmpty) {
         final data = jsonDecode(res.body);
-        await SecureStorage.saveToken(data["access_token"]);
-        await loadSession();
-      } else {
-        throw Exception("Registration failed: ${res.statusCode} - ${res.body}");
+        if (data["access_token"] != null) {
+          await SecureStorage.saveToken(data["access_token"]);
+          await loadSession();
+          return;
+        }
       }
+
+      throw ApiException(ApiClient.genericUnexpectedMessage);
     } catch (e) {
       debugPrint("Registration error: $e");
       rethrow;
@@ -356,27 +357,21 @@ class AuthProvider extends ChangeNotifier {
       debugPrint("📤 Sending payload: $payload");
 
       final res = await ApiClient.post("/auth/onboarding", payload);
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Onboarding failed');
 
-      debugPrint("📥 Response status: ${res.statusCode}");
-      debugPrint("📥 Response body: ${res.body}");
-
-      if (res.statusCode == 200) {
-        _state = AuthState(
-          isLoading: false,
-          isLoggedIn: true,
-          isOnboarded: true,
-          userId: _state.userId,
-          userEmail: _state.userEmail,
-          userName: _state.userName,
-          userCategories: resolvedCategories,
-          userIncomeCategories: resolvedIncomeCategories,
-          userExpenseCategories: resolvedExpenseCategories,
-        );
-        await _saveProfileCache();
-        notifyListeners();
-      } else {
-        throw Exception("Onboarding failed: ${res.statusCode}");
-      }
+      _state = AuthState(
+        isLoading: false,
+        isLoggedIn: true,
+        isOnboarded: true,
+        userId: _state.userId,
+        userEmail: _state.userEmail,
+        userName: _state.userName,
+        userCategories: resolvedCategories,
+        userIncomeCategories: resolvedIncomeCategories,
+        userExpenseCategories: resolvedExpenseCategories,
+      );
+      await _saveProfileCache();
+      notifyListeners();
     } catch (e) {
       debugPrint("❌ Onboarding error: $e");
       rethrow;
@@ -388,24 +383,22 @@ class AuthProvider extends ChangeNotifier {
       debugPrint("📝 Updating name to: $newName");
       final res = await ApiClient.put("/settings/name", {"name": newName});
 
-      if (res.statusCode == 200) {
-        _state = AuthState(
-          isLoading: false,
-          isLoggedIn: true,
-          isOnboarded: _state.isOnboarded,
-          userId: _state.userId,
-          userEmail: _state.userEmail,
-          userName: newName,
-          userIncomeCategories: _state.userIncomeCategories,
-          userExpenseCategories: _state.userExpenseCategories,
-          userCategories: _state.userCategories,
-        );
-        await _saveProfileCache();
-        notifyListeners();
-        debugPrint("✅ Name updated successfully");
-      } else {
-        throw Exception("Failed to update name: ${res.statusCode}");
-      }
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update name');
+
+      _state = AuthState(
+        isLoading: false,
+        isLoggedIn: true,
+        isOnboarded: _state.isOnboarded,
+        userId: _state.userId,
+        userEmail: _state.userEmail,
+        userName: newName,
+        userIncomeCategories: _state.userIncomeCategories,
+        userExpenseCategories: _state.userExpenseCategories,
+        userCategories: _state.userCategories,
+      );
+      await _saveProfileCache();
+      notifyListeners();
+      debugPrint("✅ Name updated successfully");
     } catch (e) {
       debugPrint("❌ Error updating name: $e");
       rethrow;
@@ -423,12 +416,8 @@ class AuthProvider extends ChangeNotifier {
         "new_password": newPassword,
       });
 
-      if (res.statusCode == 200) {
-        debugPrint("✅ Password updated successfully");
-      } else {
-        final errorData = jsonDecode(res.body);
-        throw Exception(errorData["detail"] ?? "Failed to update password");
-      }
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update password');
+      debugPrint("✅ Password updated successfully");
     } catch (e) {
       debugPrint("❌ Error updating password: $e");
       rethrow;
@@ -464,24 +453,22 @@ class AuthProvider extends ChangeNotifier {
         "categories": categoryPairs,
       });
 
-      if (res.statusCode == 200) {
-        _state = AuthState(
-          isLoading: false,
-          isLoggedIn: true,
-          isOnboarded: _state.isOnboarded,
-          userId: _state.userId,
-          userEmail: _state.userEmail,
-          userName: _state.userName,
-          userCategories: mergedCategories,
-          userIncomeCategories: incomeCategories,
-          userExpenseCategories: expenseCategories,
-        );
-        await _saveProfileCache();
-        notifyListeners();
-        debugPrint("✅ Categories updated successfully");
-      } else {
-        throw Exception("Failed to update categories: ${res.statusCode}");
-      }
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update categories');
+
+      _state = AuthState(
+        isLoading: false,
+        isLoggedIn: true,
+        isOnboarded: _state.isOnboarded,
+        userId: _state.userId,
+        userEmail: _state.userEmail,
+        userName: _state.userName,
+        userCategories: mergedCategories,
+        userIncomeCategories: incomeCategories,
+        userExpenseCategories: expenseCategories,
+      );
+      await _saveProfileCache();
+      notifyListeners();
+      debugPrint("✅ Categories updated successfully");
     } catch (e) {
       debugPrint("❌ Error updating categories: $e");
       rethrow;

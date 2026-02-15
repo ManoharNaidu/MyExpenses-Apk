@@ -5,8 +5,56 @@ import 'package:http/http.dart' as http;
 import '../storage/secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  ApiException(this.message, {this.statusCode});
+
+  @override
+  String toString() => message;
+}
+
 class ApiClient {
   static String get _baseUrl => dotenv.env['API_URL'] ?? '';
+  static const String genericUnexpectedMessage =
+      'Something unexpected happened. Please try again.';
+
+  static bool isSuccess(int statusCode) => statusCode >= 200 && statusCode < 300;
+
+  static String extractErrorMessage(
+    http.Response response, {
+    String fallbackMessage = genericUnexpectedMessage,
+  }) {
+    if (response.body.isEmpty) return fallbackMessage;
+
+    try {
+      final parsed = jsonDecode(response.body);
+      if (parsed is Map<String, dynamic>) {
+        final message =
+            parsed['message'] ?? parsed['detail'] ?? parsed['error'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {
+      // fallback below
+    }
+
+    final raw = response.body.trim();
+    return raw.isEmpty ? fallbackMessage : raw;
+  }
+
+  static void ensureSuccess(
+    http.Response response, {
+    String fallbackMessage = genericUnexpectedMessage,
+  }) {
+    if (isSuccess(response.statusCode)) return;
+    throw ApiException(
+      extractErrorMessage(response, fallbackMessage: fallbackMessage),
+      statusCode: response.statusCode,
+    );
+  }
 
   static bool _isRetryableStatus(int statusCode) {
     return statusCode == 408 ||
@@ -47,7 +95,7 @@ class ApiClient {
 
   static Future<http.Response> post(
     String path,
-    Map body, {
+    Object? body, {
     bool requiresAuth = true,
   }) async {
     try {
@@ -89,8 +137,7 @@ class ApiClient {
     } catch (e, stackTrace) {
       debugPrint("❌ API Error: $e");
       debugPrint("📍 Stack trace: $stackTrace");
-      // Return error response instead of throwing
-      return http.Response('{"error": "$e"}', 500);
+      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
     }
   }
 
@@ -131,8 +178,7 @@ class ApiClient {
     } catch (e, stackTrace) {
       debugPrint("❌ API Error: $e");
       debugPrint("📍 Stack trace: $stackTrace");
-      // Return error response instead of throwing
-      return http.Response('{"error": "$e"}', 500);
+      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
     }
   }
 
@@ -172,8 +218,7 @@ class ApiClient {
     } catch (e, stackTrace) {
       debugPrint("❌ API Error: $e");
       debugPrint("📍 Stack trace: $stackTrace");
-      // Return error response instead of throwing
-      return http.Response('{"error": "$e"}', 500);
+      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
     }
   }
 
@@ -212,8 +257,7 @@ class ApiClient {
     } catch (e, stackTrace) {
       debugPrint("❌ API Error: $e");
       debugPrint("📍 Stack trace: $stackTrace");
-      // Return error response instead of throwing
-      return http.Response('{"error": "$e"}', 500);
+      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
     }
   }
 
@@ -281,7 +325,7 @@ class ApiClient {
     } catch (e, stackTrace) {
       debugPrint("❌ Upload API Error: $e");
       debugPrint("📍 Stack trace: $stackTrace");
-      return http.Response('{"error": "$e"}', 500);
+      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
     }
   }
 }

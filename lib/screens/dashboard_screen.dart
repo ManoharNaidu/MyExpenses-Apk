@@ -64,10 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         fileBytes: fileBytes,
         fileName: file.name,
       );
-
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        throw Exception('Upload failed: ${res.statusCode} - ${res.body}');
-      }
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Upload failed');
 
       final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
       final drafts = await _extractStagingDrafts(decoded);
@@ -212,28 +209,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    final res = await ApiClient.post('/confirm-staging-transactions', {
-      'transactions': transactions,
-    });
+    final res = await ApiClient.post('/confirm-staging-transactions', transactions);
 
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      await TransactionRepository.refresh();
-      if (!mounted) return;
-      await showAppFeedbackDialog(
-        context,
-        title: 'Success',
-        message: 'Transactions confirmed and saved.',
-        type: AppFeedbackType.success,
-      );
-      return;
-    }
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to confirm staged transactions',
+    );
 
+    await TransactionRepository.refresh();
     if (!mounted) return;
     await showAppFeedbackDialog(
       context,
-      title: 'Confirmation Failed',
-      message: '${res.statusCode} - ${res.body}',
-      type: AppFeedbackType.error,
+      title: 'Success',
+      message: 'Transactions confirmed and saved.',
+      type: AppFeedbackType.success,
     );
   }
 
