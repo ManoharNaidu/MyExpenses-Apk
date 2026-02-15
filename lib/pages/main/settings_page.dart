@@ -352,6 +352,8 @@ class _SettingsPageState extends State<SettingsPage> {
     List<String> currentIncomeCategories,
     List<String> currentExpenseCategories,
   ) {
+    final incomeCtrl = TextEditingController();
+    final expenseCtrl = TextEditingController();
     final selectedIncome = Set<String>.from(currentIncomeCategories);
     final selectedExpense = Set<String>.from(currentExpenseCategories);
     final incomeOptions = {
@@ -396,6 +398,45 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   );
                 }),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: incomeCtrl,
+                        decoration: const InputDecoration(
+                          labelText: "Add custom income category",
+                        ),
+                        onSubmitted: (_) {
+                          final value = incomeCtrl.text.trim();
+                          if (value.isEmpty) return;
+                          setState(() {
+                            if (!incomeOptions.contains(value)) {
+                              incomeOptions.add(value);
+                            }
+                            selectedIncome.add(value);
+                            incomeCtrl.clear();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {
+                        final value = incomeCtrl.text.trim();
+                        if (value.isEmpty) return;
+                        setState(() {
+                          if (!incomeOptions.contains(value)) {
+                            incomeOptions.add(value);
+                          }
+                          selectedIncome.add(value);
+                          incomeCtrl.clear();
+                        });
+                      },
+                      icon: const Icon(Icons.add_circle_rounded),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   "Expense Categories",
@@ -420,6 +461,45 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   );
                 }),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: expenseCtrl,
+                        decoration: const InputDecoration(
+                          labelText: "Add custom expense category",
+                        ),
+                        onSubmitted: (_) {
+                          final value = expenseCtrl.text.trim();
+                          if (value.isEmpty) return;
+                          setState(() {
+                            if (!expenseOptions.contains(value)) {
+                              expenseOptions.add(value);
+                            }
+                            selectedExpense.add(value);
+                            expenseCtrl.clear();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {
+                        final value = expenseCtrl.text.trim();
+                        if (value.isEmpty) return;
+                        setState(() {
+                          if (!expenseOptions.contains(value)) {
+                            expenseOptions.add(value);
+                          }
+                          selectedExpense.add(value);
+                          expenseCtrl.clear();
+                        });
+                      },
+                      icon: const Icon(Icons.add_circle_rounded),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -463,7 +543,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      incomeCtrl.dispose();
+      expenseCtrl.dispose();
+    });
   }
 
   void _showLogoutDialog(BuildContext context) {

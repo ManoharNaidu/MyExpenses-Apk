@@ -57,21 +57,15 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (!mounted || selected == null) return;
 
     if (selected == 'settings') {
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const SettingsPage()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
       return;
     }
 
     if (selected == 'theme') {
       await context.read<ThemeProvider>().toggleTheme();
       if (!mounted) return;
-      await showAppFeedbackDialog(
-        context,
-        title: 'Theme Updated',
-        message: 'Application theme updated successfully.',
-        type: AppFeedbackType.success,
-      );
     }
   }
 
