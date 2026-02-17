@@ -85,7 +85,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final isLoading = TransactionRepository.isLoading;
         final isOnline = TransactionRepository.isOnline;
 
-        final listItemCount = filtered.length + ((hasMore || isLoading) ? 1 : 0);
+        final listItemCount =
+            filtered.length + ((hasMore || isLoading) ? 1 : 0);
 
         return Scaffold(
           floatingActionButton: FloatingActionButton(
@@ -155,7 +156,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(10),
@@ -183,7 +187,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         if (hasMore && isOnline) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Center(child: Text('Scroll to load more...')),
+                            child: Center(
+                              child: Text('Scroll to load more...'),
+                            ),
                           );
                         }
 
@@ -191,18 +197,45 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       }
 
                       final tx = filtered[i];
-                      return TransactionTile(
-                        tx: tx,
-                        showDeleteOnLeft: true,
-                        onDelete: () async {
-                          await TransactionRepository.delete(tx.id!);
+                      return Dismissible(
+                        key: ValueKey(
+                          tx.id ?? '${tx.date.toIso8601String()}-$i',
+                        ),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          alignment: Alignment.centerRight,
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onDismissed: (_) async {
+                          if (tx.id != null) {
+                            await TransactionRepository.delete(tx.id!);
+                          }
                         },
-                        onEdit: () => showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          showDragHandle: true,
-                          builder: (_) =>
-                              AddTransactionModal(existing: tx, onSaved: () {}),
+                        child: TransactionTile(
+                          tx: tx,
+                          onDelete: () async {
+                            if (tx.id != null) {
+                              await TransactionRepository.delete(tx.id!);
+                            }
+                          },
+                          onEdit: () => showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            showDragHandle: true,
+                            builder: (_) => AddTransactionModal(
+                              existing: tx,
+                              onSaved: () {},
+                            ),
+                          ),
                         ),
                       );
                     },

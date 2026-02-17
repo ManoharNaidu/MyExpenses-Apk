@@ -5,6 +5,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/constants/categories.dart';
 import '../../core/constants/currencies.dart';
 import '../../core/notifications/notification_service.dart';
+import '../../core/theme/theme_provider.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -32,13 +33,18 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
     final userName = authProvider.state.userName ?? "User";
     final userEmail = authProvider.state.userEmail ?? "";
     final userIncomeCategories = authProvider.state.effectiveIncomeCategories;
     final userExpenseCategories = authProvider.state.effectiveExpenseCategories;
     final userCurrency = authProvider.state.effectiveCurrency;
     final userCurrencyOption = currencyFromCode(userCurrency);
-    final userCategories = {...userIncomeCategories, ...userExpenseCategories}.toList();
+    final userCategories = {
+      ...userIncomeCategories,
+      ...userExpenseCategories,
+    }.toList();
+    final isDarkMode = themeProvider.mode == ThemeMode.dark;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -124,6 +130,14 @@ class _SettingsPageState extends State<SettingsPage> {
           Card(
             child: Column(
               children: [
+                const ListTile(
+                  leading: Icon(Icons.person_outline),
+                  title: Text(
+                    "Profile",
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.person_outline),
                   title: const Text("Change Name"),
@@ -140,13 +154,23 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: () => _showChangePasswordDialog(context),
                 ),
                 const Divider(height: 1),
+                const ListTile(
+                  leading: Icon(Icons.tune_rounded),
+                  title: Text(
+                    "Preferences",
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.currency_exchange_outlined),
                   title: const Text("Change Currency"),
                   subtitle: Text(userCurrencyOption.label),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      _showChangeCurrencyDialog(context, userCurrencyOption.code),
+                  onTap: () => _showChangeCurrencyDialog(
+                    context,
+                    userCurrencyOption.code,
+                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -161,6 +185,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     userIncomeCategories,
                     userExpenseCategories,
                   ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.dark_mode_outlined),
+                  title: const Text("Dark Mode"),
+                  subtitle: const Text("Use dark appearance across the app"),
+                  value: isDarkMode,
+                  onChanged: (_) async {
+                    await context.read<ThemeProvider>().toggleTheme();
+                  },
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
@@ -372,7 +406,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Enter current password";
+                  if (value == null || value.isEmpty) {
+                    return "Enter current password";
+                  }
                   return null;
                 },
               ),
@@ -385,7 +421,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Enter new password";
+                  if (value == null || value.isEmpty) {
+                    return "Enter new password";
+                  }
                   return null;
                 },
               ),
@@ -398,7 +436,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (value != newPasswordController.text) return "Passwords do not match";
+                  if (value != newPasswordController.text) {
+                    return "Passwords do not match";
+                  }
                   return null;
                 },
               ),

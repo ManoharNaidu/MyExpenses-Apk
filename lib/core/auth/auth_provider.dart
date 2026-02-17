@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../storage/secure_storage.dart';
 import 'auth_state.dart';
 import '../../data/transaction_repository.dart';
+import '../../data/staged_draft_repository.dart';
 
 class AuthProvider extends ChangeNotifier {
   static const _profileKey = 'auth_profile';
@@ -190,6 +191,7 @@ class AuthProvider extends ChangeNotifier {
         userExpenseCategories: expenseCategories,
       );
       TransactionRepository.setCurrentUserId(_state.userId);
+      StagedDraftRepository.setCurrentUserId(_state.userId);
       notifyListeners();
       return true;
     } catch (_) {
@@ -239,6 +241,7 @@ class AuthProvider extends ChangeNotifier {
 
         // Set user ID for transaction filtering
         TransactionRepository.setCurrentUserId(_state.userId);
+        StagedDraftRepository.setCurrentUserId(_state.userId);
 
         debugPrint(
           "✅ Session loaded - userId: ${_state.userId}, name: ${_state.userName}, isOnboarded: ${_state.isOnboarded}",
@@ -326,6 +329,7 @@ class AuthProvider extends ChangeNotifier {
     await SecureStorage.clear();
     await SecureStorage.deleteKey(_profileKey);
     TransactionRepository.setCurrentUserId(null);
+    StagedDraftRepository.setCurrentUserId(null);
     _state = AuthState.initial().copyWith(isLoading: false);
     notifyListeners();
   }

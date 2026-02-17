@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../widgets/add_transaction_modal.dart';
 import '../widgets/app_feedback_dialog.dart';
 import '../widgets/summary_card.dart';
 import '../data/transaction_repository.dart';
+import '../data/staged_draft_repository.dart';
 import '../core/api/api_client.dart';
 import '../core/auth/auth_provider.dart';
 import '../core/constants/currencies.dart';
@@ -29,6 +31,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     TransactionRepository.ensureInitialized();
+    StagedDraftRepository.ensureInitialized();
   }
 
   Future<void> _uploadPdfAndReview() async {
@@ -82,11 +85,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
+      await StagedDraftRepository.upsertDrafts(drafts);
+      if (!mounted) return;
+
       await showAppFeedbackDialog(
         context,
         title: 'Upload Successful',
         message:
-            'Your bank statement was uploaded and staged transactions are ready. Tap "Review staged transactions" on Dashboard to confirm them.',
+            'Your bank statement was uploaded. Staged transactions are saved locally. Select both type and category per row and confirm to queue sync.',
         type: AppFeedbackType.success,
       );
     } catch (e) {
@@ -104,7 +110,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _reviewStagedTransactions() async {
     try {
-      final drafts = await _extractStagingDrafts(const []);
+      await StagedDraftRepository.ensureInitialized();
+      var drafts = StagedDraftRepository.currentDrafts;
+      if (drafts.isEmpty) {
+        final fetched = await _extractStagingDrafts(const []);
+        if (fetched.isNotEmpty) {
+          await StagedDraftRepository.upsertDrafts(fetched);
+          drafts = StagedDraftRepository.currentDrafts;
+        }
+      }
       if (!mounted) return;
 
       if (drafts.isEmpty) {
@@ -127,8 +141,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .state
           .effectiveIncomeCategories;
 
-      final needsIncomeReview = drafts.any((d) => d.type == TxType.income);
-      final needsExpenseReview = drafts.any((d) => d.type == TxType.expense);
+      final needsIncomeReview = drafts.any(
+        (d) => d.predictedType == TxType.income,
+      );
+      final needsExpenseReview = drafts.any(
+        (d) => d.predictedType == TxType.expense,
+      );
 
       if (needsIncomeReview && selectedIncomeCats.isEmpty) {
         await showAppFeedbackDialog(
@@ -172,6 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       await _confirmStagedTransactions(accepted);
     } catch (e) {
+      debugPrint('Error during staged transaction review: $e');
       if (!mounted) return;
       await showAppFeedbackDialog(
         context,
@@ -228,8 +247,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _confirmStagedTransactions(
     List<StagedTransactionDraft> accepted,
   ) async {
-    final transactions = accepted
-        .where((e) => (e.stagingId ?? '').isNotEmpty)
+    final selectedComplete = accepted
+        .where(
+          (e) =>
+              (e.stagingId ?? '').isNotEmpty &&
+              e.stagedType != null &&
+              (e.stagedCategory ?? '').trim().isNotEmpty,
+        )
+        .toList();
+
+    final transactions = selectedComplete
         .map((e) => e.toConfirmJson())
         .toList();
 
@@ -244,19 +271,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    final res = await ApiClient.post('/confirm-staging-transactions', transactions);
+    await TransactionRepository.enqueueStagingConfirmation(transactions);
 
-    ApiClient.ensureSuccess(
-      res,
-      fallbackMessage: 'Failed to confirm staged transactions',
-    );
+    final confirmedIds = selectedComplete
+        .map((e) => e.stagingId)
+        .whereType<String>()
+        .toSet();
+    await StagedDraftRepository.removeByStagingIds(confirmedIds);
 
-    await TransactionRepository.refresh();
+    // Best effort background sync. Do not block confirm UX on network/API state.
+    unawaited(TransactionRepository.syncPendingOperations());
     if (!mounted) return;
+
+    final pending = TransactionRepository.pendingOutboxCount;
+
     await showAppFeedbackDialog(
       context,
       title: 'Success',
-      message: 'Transactions confirmed and saved.',
+      message: pending == 0
+          ? 'Staged confirmations were synced.'
+          : 'Staged confirmations were queued for sync.',
       type: AppFeedbackType.success,
     );
   }
@@ -332,15 +366,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.currency_exchange_outlined),
-                    title: const Text('Active Currency'),
-                    subtitle: Text(
-                      '${currencyOption.symbol} ${currencyOption.code} • ${currencyOption.name}',
-                    ),
-                  ),
-                ),
                 SummaryCard(
                   title: "This Week (Net)",
                   value: formatMoney(weekNet),
@@ -460,6 +485,14 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final acceptedCount = _edited.where((e) => e.accepted).length;
+    final validSelectedCount = _edited
+        .where(
+          (e) =>
+              e.accepted &&
+              e.stagedType != null &&
+              (e.stagedCategory ?? '').trim().isNotEmpty,
+        )
+        .length;
 
     return Scaffold(
       appBar: AppBar(
@@ -476,13 +509,26 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '$acceptedCount/${_edited.length} selected',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$acceptedCount/${_edited.length} selected • $validSelectedCount ready',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Choose both type and category. Only complete selections are sent.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 FilledButton(
-                  onPressed: acceptedCount == 0
+                  onPressed: validSelectedCount == 0
                       ? null
                       : () {
                           Navigator.pop(
@@ -503,17 +549,22 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (_, index) {
                 final item = _edited[index];
-                final categoryOptions = item.type == TxType.income
-                    ? widget.incomeCategories
-                    : widget.expenseCategories;
-                final safeCategory = categoryOptions.contains(item.category)
-                    ? item.category
-                    : (categoryOptions.isNotEmpty
-                          ? categoryOptions.first
-                          : item.category);
+                final selectedType = item.stagedType;
+                final selectedCategory = item.stagedCategory;
+                final categoryOptions = selectedType == null
+                    ? const <String>[]
+                    : (selectedType == TxType.income
+                          ? widget.incomeCategories
+                          : widget.expenseCategories);
 
-                if (safeCategory != item.category) {
-                  _edited[index] = item.copyWith(category: safeCategory);
+                final safeCategory =
+                    categoryOptions.contains(selectedCategory) &&
+                        (selectedCategory ?? '').isNotEmpty
+                    ? selectedCategory
+                    : null;
+
+                if (safeCategory != selectedCategory) {
+                  _edited[index] = item.copyWith(clearStagedCategory: true);
                 }
 
                 return Card(
@@ -546,7 +597,9 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
                               item.amount.toStringAsFixed(2),
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
-                                color: item.type == TxType.income
+                                color:
+                                    (selectedType ?? item.predictedType) ==
+                                        TxType.income
                                     ? Colors.green.shade700
                                     : Colors.red.shade700,
                               ),
@@ -556,8 +609,8 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
                         const SizedBox(height: 6),
                         Text(
                           'Predicted: '
-                          '${item.predicted_type == TxType.income ? 'Income' : 'Expense'} '
-                          '• ${item.predicted_category}',
+                          '${item.predictedType == TxType.income ? 'Income' : 'Expense'} '
+                          '• ${item.predictedCategory}',
                           style: TextStyle(
                             color: Colors.grey.shade700,
                             fontWeight: FontWeight.w600,
@@ -568,7 +621,8 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<TxType>(
-                                initialValue: item.type,
+                                initialValue: selectedType,
+                                hint: const Text('Select type'),
                                 items: const [
                                   DropdownMenuItem(
                                     value: TxType.income,
@@ -584,17 +638,15 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
                                   final nextOptions = v == TxType.income
                                       ? widget.incomeCategories
                                       : widget.expenseCategories;
-                                  final nextCategory =
-                                      nextOptions.contains(item.category)
-                                      ? item.category
-                                      : (nextOptions.isNotEmpty
-                                            ? nextOptions.first
-                                            : item.category);
+                                  final retainedCategory =
+                                      nextOptions.contains(selectedCategory)
+                                      ? selectedCategory
+                                      : null;
 
                                   setState(
                                     () => _edited[index] = item.copyWith(
-                                      type: v,
-                                      category: nextCategory,
+                                      stagedType: v,
+                                      stagedCategory: retainedCategory,
                                     ),
                                   );
                                 },
@@ -607,6 +659,7 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 initialValue: safeCategory,
+                                hint: const Text('Select category'),
                                 items: categoryOptions
                                     .map(
                                       (c) => DropdownMenuItem(
@@ -616,10 +669,9 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
                                     )
                                     .toList(),
                                 onChanged: (v) {
-                                  if (v == null) return;
                                   setState(
                                     () => _edited[index] = item.copyWith(
-                                      category: v,
+                                      stagedCategory: v,
                                     ),
                                   );
                                 },

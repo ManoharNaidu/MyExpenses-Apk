@@ -19,7 +19,6 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   late TxType type;
   late String category;
   DateTime date = DateTime.now();
-  DateTime? originalDate;
 
   final amountCtrl = TextEditingController();
   final descriptionCtrl = TextEditingController();
@@ -45,7 +44,6 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
         e?.category ??
         (type == TxType.income ? incomeCats.first : expenseCats.first);
     date = e?.date ?? DateTime.now();
-    originalDate = e?.originalDate ?? date;
 
     if (e != null) {
       amountCtrl.text = e.amount.toStringAsFixed(2);
@@ -163,29 +161,6 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             const SizedBox(height: 10),
 
-            // original date picker
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text("Original Date (optional)"),
-              subtitle: originalDate != null
-                  ? Text(
-                      "${originalDate!.day}/${originalDate!.month}/${originalDate!.year}",
-                    )
-                  : const Text("Not set"),
-              trailing: const Icon(Icons.calendar_month_rounded),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  firstDate: DateTime(2020, 1, 1),
-                  lastDate: DateTime(2035, 12, 31),
-                  initialDate: originalDate ?? date,
-                );
-                if (picked != null) setState(() => originalDate = picked);
-              },
-            ),
-
-            const SizedBox(height: 10),
-
             // description
             TextField(
               controller: descriptionCtrl,
@@ -245,14 +220,10 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
     }
 
     final txDate = DateTime(date.year, date.month, date.day);
-    final origDate = originalDate != null
-        ? DateTime(originalDate!.year, originalDate!.month, originalDate!.day)
-        : txDate;
 
     final tx = TransactionModel(
       id: widget.existing?.id,
       date: txDate,
-      originalDate: origDate,
       type: type,
       category: category,
       amount: amount,

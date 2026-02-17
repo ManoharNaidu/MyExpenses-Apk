@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_provider.dart';
-import '../../core/theme/theme_provider.dart';
+import '../../core/constants/currencies.dart';
 import '../../screens/dashboard_screen.dart';
 import '../../screens/history_screen.dart';
 import '../../screens/analytics_screen.dart';
@@ -27,47 +27,72 @@ class _MainScaffoldState extends State<MainScaffold> {
     TransactionRepository.ensureInitialized();
   }
 
-  Future<void> _openProfileMenu() async {
-    final selected = await showModalBottomSheet<String>(
+  Future<void> _openSettings() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+  }
+
+  Future<void> _showCurrencyPicker() async {
+    final currentCode = context.read<AuthProvider>().state.effectiveCurrency;
+    final normalized = currentCode.trim().toUpperCase();
+    var selectedCurrency = supportedCurrencies.any((c) => c.code == normalized)
+        ? normalized
+        : supportedCurrencies.first.code;
+
+    await showDialog<void>(
       context: context,
-      showDragHandle: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.settings_rounded),
-                title: const Text('Settings'),
-                subtitle: const Text('Open profile and account settings'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Navigator.pop(ctx, 'settings'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.brightness_6_rounded),
-                title: const Text('Toggle Dark / Light mode'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Navigator.pop(ctx, 'theme'),
-              ),
-            ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
+          title: const Text('Change Currency'),
+          content: DropdownButtonFormField<String>(
+            initialValue: selectedCurrency,
+            decoration: const InputDecoration(
+              labelText: 'Currency',
+              border: OutlineInputBorder(),
+            ),
+            items: supportedCurrencies
+                .map(
+                  (currency) => DropdownMenuItem<String>(
+                    value: currency.code,
+                    child: Text(currency.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => selectedCurrency = value);
+            },
           ),
-        );
-      },
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final authProvider = context.read<AuthProvider>();
+                try {
+                  await authProvider.updateCurrency(selectedCurrency);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                } catch (e) {
+                  if (!dialogContext.mounted) return;
+                  await showAppFeedbackDialog(
+                    dialogContext,
+                    title: 'Update Failed',
+                    message: '$e',
+                    type: AppFeedbackType.error,
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
     );
-
-    if (!mounted || selected == null) return;
-
-    if (selected == 'settings') {
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
-      return;
-    }
-
-    if (selected == 'theme') {
-      await context.read<ThemeProvider>().toggleTheme();
-      if (!mounted) return;
-    }
   }
 
   Future<void> _exportTransactions() async {
@@ -106,6 +131,31 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
+  Future<void> _syncNow() async {
+    try {
+      await TransactionRepository.syncPendingOperations();
+      if (!mounted) return;
+
+      final pending = TransactionRepository.pendingOutboxCount;
+      await showAppFeedbackDialog(
+        context,
+        title: pending == 0 ? 'Synced' : 'Sync Pending',
+        message: pending == 0
+            ? 'All pending changes are synced.'
+            : '$pending change(s) are still pending and will retry automatically.',
+        type: pending == 0 ? AppFeedbackType.success : AppFeedbackType.error,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await showAppFeedbackDialog(
+        context,
+        title: 'Sync Failed',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
+    }
+  }
+
   final pages = [
     const DashboardScreen(),
     const HistoryScreen(),
@@ -117,45 +167,106 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<AuthProvider>().state.effectiveCurrency;
+    final currencyOption = currencyFromCode(currency);
     final theme = Theme.of(context);
-    final currencyBg = Color.alphaBlend(
-      Colors.black.withValues(alpha: 0.55),
-      theme.colorScheme.surface,
-    );
 
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: 84,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: currencyBg,
-              child: Text(
-                currency,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+        leadingWidth: index == 0 ? 200 : null,
+        leading: index == 0
+            ? InkWell(
+                onTap: _showCurrencyPicker,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.currency_exchange_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${currencyOption.symbol} ${currencyOption.name}',
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ),
+              )
+            : null,
         title: Text(titles[index]),
         actions: index == 0
             ? [
-                // Export CSV button only on Dashboard
+                StreamBuilder<int>(
+                  stream: TransactionRepository.getOutboxCountStream(),
+                  initialData: TransactionRepository.pendingOutboxCount,
+                  builder: (context, pendingSnap) {
+                    final pending = pendingSnap.data ?? 0;
+
+                    return StreamBuilder<bool>(
+                      stream: TransactionRepository.getSyncingStream(),
+                      initialData: TransactionRepository.isSyncing,
+                      builder: (context, syncingSnap) {
+                        final syncing = syncingSnap.data ?? false;
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              tooltip: syncing
+                                  ? 'Syncing...'
+                                  : 'Sync now ($pending pending)',
+                              onPressed: syncing ? null : _syncNow,
+                              icon: Icon(
+                                syncing
+                                    ? Icons.sync_rounded
+                                    : Icons.cloud_upload_outlined,
+                              ),
+                            ),
+                            if (!syncing && pending > 0)
+                              Positioned(
+                                right: 6,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    pending > 99 ? '99+' : '$pending',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
                 IconButton(
                   tooltip: "Export CSV",
                   onPressed: _exportTransactions,
                   icon: const Icon(Icons.download_rounded),
                 ),
                 IconButton(
-                  tooltip: 'Profile',
-                  onPressed: _openProfileMenu,
-                  icon: const Icon(Icons.account_circle_rounded),
+                  tooltip: 'Settings',
+                  onPressed: _openSettings,
+                  icon: const Icon(Icons.settings_rounded),
                 ),
               ]
             : null,
