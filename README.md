@@ -253,6 +253,36 @@ flutter build apk --release --build-number 2 --build-name 1.0.1
 
 ---
 
+## ⚡ Quick Start for New Users
+
+If you’ve just signed up, follow this practical flow inside the app:
+
+1. **Set currency**
+   - Tap currency in the Dashboard header (left side) or use Settings → Change Currency.
+2. **Add categories**
+   - Go to Settings → Edit Categories and set both income + expense categories.
+3. **Add your first transaction**
+   - Tap **Add** on Dashboard or History and save an entry.
+4. **Upload a bank PDF and review staged rows**
+   - Dashboard → Upload Bank PDF → Review staged transactions.
+   - Important: only selected rows with both **Type** and **Category** are valid for confirm.
+5. **Use Sync when pending > 0**
+   - Dashboard top bar cloud icon shows pending operations.
+   - Tap it to manually sync queued offline changes.
+
+### What each tab does
+- **Dashboard**: summaries, quick add, PDF upload, staged review, currency/sync/export/settings shortcuts.
+- **History**: full list with filters (type, month, category), edit/delete, and load-more scrolling.
+- **Analytics**: weekly/monthly Income vs Expense trend charts.
+- **Settings**: profile, password, categories, currency, dark mode, notifications, privacy/about.
+
+### Local-first behavior (important)
+- Add/edit/delete actions appear instantly in local state for responsive UX.
+- Sync happens in background and can also be triggered manually.
+- If network/API is unavailable, operations remain queued and retry later.
+
+---
+
 ## 📱 How to Use My Expenses
 
 ### Adding an Expense

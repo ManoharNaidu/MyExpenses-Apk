@@ -210,6 +210,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.school_outlined),
+                  title: const Text("Getting Started"),
+                  subtitle: const Text("Newcomer guide for first-time usage"),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showGettingStartedGuide(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text("Privacy"),
                   subtitle: const Text("How My Expenses handles your data"),
@@ -710,6 +718,85 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showGettingStartedGuide(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Getting Started",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "New to My Expenses? Follow this quick guide to set things up right and avoid common confusion.",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    "What each tab does",
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "• Dashboard: weekly/monthly summaries, add transaction, upload bank PDF, review staged transactions, and top-bar tools (currency/sync/export/settings).\n"
+                    "• History: full transaction list with filters (type, month, category), edit, delete, and load-more scrolling.\n"
+                    "• Analytics: weekly/monthly bars comparing Income vs Expense trends.\n"
+                    "• Settings: profile, password, categories, currency, notifications, and app info.",
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    "First 5 actions for a new user",
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "1) Set your currency from Dashboard header or Settings.\n"
+                    "2) Add/adjust income and expense categories in Settings.\n"
+                    "3) Add your first transaction with the Add button.\n"
+                    "4) Upload a bank PDF, then review staged rows carefully.\n"
+                    "5) If pending count is shown on cloud icon, tap Sync now.",
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    "Staged review rules (important)",
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "• Staged rows should be reviewed row-by-row before confirm.\n"
+                    "• A row is only valid when both Type and Category are set.\n"
+                    "• Confirm sends only complete selected rows.\n"
+                    "• Confirmed rows are queued first, then synced when possible.",
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    "Local-first behavior",
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "• Add/Edit/Delete actions update local app state instantly for responsive UX.\n"
+                    "• Sync runs in background and can also be triggered manually via cloud icon.\n"
+                    "• If network/API is unavailable, pending operations stay queued and retry later.",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

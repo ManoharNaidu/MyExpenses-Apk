@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
+import '../../core/storage/secure_storage.dart';
 import '../../screens/dashboard_screen.dart';
 import '../../screens/history_screen.dart';
 import '../../screens/analytics_screen.dart';
@@ -20,11 +21,154 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int index = 0;
+  bool _hasCheckedFirstRunGuide = false;
+
+  static const _guideSeenPrefix = 'guide_seen_';
 
   @override
   void initState() {
     super.initState();
     TransactionRepository.ensureInitialized();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowFirstRunGuide();
+    });
+  }
+
+  Future<void> _maybeShowFirstRunGuide() async {
+    if (!mounted || _hasCheckedFirstRunGuide) return;
+    _hasCheckedFirstRunGuide = true;
+
+    final authState = context.read<AuthProvider>().state;
+    if (!authState.isLoggedIn || !authState.isOnboarded) return;
+
+    final userKey = (authState.userId ?? authState.userEmail ?? 'user').trim();
+    final storageKey = '$_guideSeenPrefix$userKey';
+    final hasSeen = await SecureStorage.readString(storageKey);
+
+    if (!mounted || hasSeen == 'true') return;
+
+    await _showFirstRunGuide();
+    await SecureStorage.writeString(storageKey, 'true');
+  }
+
+  Future<void> _showFirstRunGuide() async {
+    final steps = <({IconData icon, String title, String message})>[
+      (
+        icon: Icons.waving_hand_rounded,
+        title: 'Welcome to My Expenses',
+        message:
+            'This quick guide walks you through how the app works so you can start with confidence.',
+      ),
+      (
+        icon: Icons.dashboard_customize_rounded,
+        title: 'Know your tabs',
+        message:
+            'Dashboard = summaries + quick actions.\n'
+            'History = filter, edit, and delete records.\n'
+            'Analytics = weekly/monthly income vs expense trends.\n'
+            'Settings = profile, categories, currency, and preferences.',
+      ),
+      (
+        icon: Icons.flag_rounded,
+        title: 'First actions to do now',
+        message:
+            '1) Set your currency.\n'
+            '2) Add or edit income/expense categories.\n'
+            '3) Add your first transaction from the Add button.',
+      ),
+      (
+        icon: Icons.picture_as_pdf_rounded,
+        title: 'PDF upload + staged review',
+        message:
+            'Upload your bank PDF from Dashboard, then review staged rows carefully.\n\n'
+            'Important rule: only selected rows with BOTH Type and Category are queued for confirmation.',
+      ),
+      (
+        icon: Icons.cloud_sync_rounded,
+        title: 'Sync and local-first behavior',
+        message:
+            'Add/edit/delete updates appear instantly in the app.\n'
+            'Changes are synced in background, or manually via cloud icon.\n'
+            'If pending count is above 0, tap Sync now.',
+      ),
+    ];
+
+    var currentStep = 0;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            final step = steps[currentStep];
+            final isFirst = currentStep == 0;
+            final isLast = currentStep == steps.length - 1;
+
+            return AlertDialog(
+              title: Text('Getting Started • Step ${currentStep + 1}/${steps.length}'),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LinearProgressIndicator(
+                      value: (currentStep + 1) / steps.length,
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(step.icon, size: 28),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                step.title,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(step.message),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Skip tour'),
+                ),
+                if (!isFirst)
+                  TextButton(
+                    onPressed: () => setState(() => currentStep--),
+                    child: const Text('Back'),
+                  ),
+                FilledButton(
+                  onPressed: () {
+                    if (isLast) {
+                      Navigator.pop(dialogContext);
+                      return;
+                    }
+                    setState(() => currentStep++);
+                  },
+                  child: Text(isLast ? 'Done' : 'Next'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _openSettings() async {
