@@ -110,10 +110,10 @@ class AuthProvider extends ChangeNotifier {
     return List.generate(
       math.max(incomeCategories.length, expenseCategories.length),
       (index) => {
-        'income_category':
-            index < incomeCategories.length ? incomeCategories[index].trim() : null,
-        'expense_category':
-            index < expenseCategories.length
+        'income_category': index < incomeCategories.length
+            ? incomeCategories[index].trim()
+            : null,
+        'expense_category': index < expenseCategories.length
             ? expenseCategories[index].trim()
             : null,
       },
@@ -224,7 +224,10 @@ class AuthProvider extends ChangeNotifier {
         final parsedCategories = _extractCategories(data);
         final incomeCategories = parsedCategories.income;
         final expenseCategories = parsedCategories.expense;
-        final categoriesList = {...incomeCategories, ...expenseCategories}.toList();
+        final categoriesList = {
+          ...incomeCategories,
+          ...expenseCategories,
+        }.toList();
 
         _state = AuthState(
           isLoading: false,
@@ -362,9 +365,7 @@ class AuthProvider extends ChangeNotifier {
         expenseCategories: cleanedExpense,
       );
 
-      final payload = {
-        "categories": categoryPairs,
-      };
+      final payload = {"categories": categoryPairs};
 
       debugPrint("📤 Sending payload: $payload");
 
@@ -430,7 +431,10 @@ class AuthProvider extends ChangeNotifier {
         "new_password": newPassword,
       });
 
-      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update password');
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to update password',
+      );
       debugPrint("✅ Password updated successfully");
     } catch (e) {
       debugPrint("❌ Error updating password: $e");
@@ -467,7 +471,10 @@ class AuthProvider extends ChangeNotifier {
         "categories": categoryPairs,
       });
 
-      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update categories');
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to update categories',
+      );
 
       _state = AuthState(
         isLoading: false,
@@ -498,7 +505,10 @@ class AuthProvider extends ChangeNotifier {
         "currency": normalized,
       });
 
-      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update currency');
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to update currency',
+      );
 
       _state = _copyState(userCurrency: normalized);
       await _saveProfileCache();
@@ -506,6 +516,33 @@ class AuthProvider extends ChangeNotifier {
       debugPrint("✅ Currency updated successfully");
     } catch (e) {
       debugPrint("❌ Error updating currency: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> submitFeedback(String description) async {
+    try {
+      final trimmedDescription = description.trim();
+      if (trimmedDescription.isEmpty) {
+        throw ApiException('Feedback description cannot be empty');
+      }
+
+      final userId = _state.userId;
+      if (userId == null || userId.trim().isEmpty) {
+        throw ApiException('Unable to identify user. Please login again.');
+      }
+
+      final res = await ApiClient.post('/feedback', {
+        'user_id': userId,
+        'description': trimmedDescription,
+      });
+
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to submit feedback',
+      );
+    } catch (e) {
+      debugPrint('❌ Error submitting feedback: $e');
       rethrow;
     }
   }

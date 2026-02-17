@@ -209,6 +209,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
                 const Divider(height: 1),
+                const ListTile(
+                  leading: Icon(Icons.help_outline_rounded),
+                  title: Text(
+                    "Help & Feedback",
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.feedback_outlined),
+                  title: const Text("Send Feedback"),
+                  subtitle: const Text("Tell us what can be improved"),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showSendFeedbackDialog(context),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.school_outlined),
                   title: const Text("Getting Started"),
@@ -719,6 +735,82 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+
+  void _showSendFeedbackDialog(BuildContext context) {
+    final feedbackController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Send Feedback"),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: feedbackController,
+              maxLines: 4,
+              enabled: !isSubmitting,
+              decoration: const InputDecoration(
+                hintText: "Share your feedback or report an issue...",
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return "Please enter feedback";
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () => Navigator.pop(dialogContext),
+              child: const Text("Cancel"),
+            ),
+            FilledButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+
+                      setState(() => isSubmitting = true);
+                      try {
+                        await context.read<AuthProvider>().submitFeedback(
+                          feedbackController.text,
+                        );
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        await showAppFeedbackDialog(
+                          dialogContext,
+                          title: 'Thanks for your feedback',
+                          message: 'Your feedback was submitted successfully.',
+                          type: AppFeedbackType.success,
+                        );
+                      } catch (e) {
+                        if (!dialogContext.mounted) return;
+                        await showAppFeedbackDialog(
+                          dialogContext,
+                          title: 'Submission Failed',
+                          message: '$e',
+                          type: AppFeedbackType.error,
+                        );
+                      } finally {
+                        if (dialogContext.mounted) {
+                          setState(() => isSubmitting = false);
+                        }
+                      }
+                    },
+              child: Text(isSubmitting ? "Submitting..." : "Submit"),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(() => feedbackController.dispose());
   }
 
   void _showGettingStartedGuide(BuildContext context) {
