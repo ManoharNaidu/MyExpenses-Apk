@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -13,9 +15,8 @@ void main() async {
 
   // Load environment variables
   await dotenv.load(fileName: ".env");
-  await NotificationService.initialize();
-
   runApp(const MyExpensesApp());
+  unawaited(NotificationService.initialize());
 }
 
 class MyExpensesApp extends StatelessWidget {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -199,65 +200,74 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> _refreshSessionFromServer({
+    Duration timeout = const Duration(seconds: 12),
+    bool notify = true,
+  }) async {
+    try {
+      final res = await ApiClient.get('/auth/me').timeout(timeout);
+      if (res.statusCode != 200 || res.body.isEmpty) return false;
+
+      final data = jsonDecode(res.body);
+      final parsedCategories = _extractCategories(data);
+      final incomeCategories = parsedCategories.income;
+      final expenseCategories = parsedCategories.expense;
+      final categoriesList = {
+        ...incomeCategories,
+        ...expenseCategories,
+      }.toList();
+
+      _state = AuthState(
+        isLoading: false,
+        isLoggedIn: true,
+        isOnboarded: data["is_onboarded"] ?? false,
+        userId: data["id"]?.toString(),
+        userEmail: data["email"],
+        userName: data["name"],
+        userCurrency: data["currency"]?.toString(),
+        userCategories: categoriesList,
+        userIncomeCategories: incomeCategories,
+        userExpenseCategories: expenseCategories,
+      );
+
+      TransactionRepository.setCurrentUserId(_state.userId);
+      StagedDraftRepository.setCurrentUserId(_state.userId);
+      await _saveProfileCache();
+      if (notify) notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error refreshing session from server: $e');
+      return false;
+    }
+  }
+
   Future<void> loadSession() async {
     _state = _copyState(isLoading: true);
     notifyListeners();
 
     try {
-      debugPrint("🔄 Loading session...");
       final token = await SecureStorage.readToken();
       if (token == null) {
-        debugPrint("⚠️ No token found, user not logged in");
         _state = AuthState.initial().copyWith(isLoading: false);
         notifyListeners();
         return;
       }
 
-      debugPrint("✅ Token found, fetching user data");
-      final res = await ApiClient.get("/auth/me");
-      debugPrint("📥 /auth/me response: ${res.statusCode}");
-
-      if (res.statusCode == 200 && res.body.isNotEmpty) {
-        final data = jsonDecode(res.body);
-        debugPrint("👤 User data: $data");
-
-        final parsedCategories = _extractCategories(data);
-        final incomeCategories = parsedCategories.income;
-        final expenseCategories = parsedCategories.expense;
-        final categoriesList = {
-          ...incomeCategories,
-          ...expenseCategories,
-        }.toList();
-
-        _state = AuthState(
-          isLoading: false,
-          isLoggedIn: true,
-          isOnboarded: data["is_onboarded"] ?? false,
-          userId: data["id"]?.toString(),
-          userEmail: data["email"],
-          userName: data["name"],
-          userCurrency: data["currency"]?.toString(),
-          userCategories: categoriesList,
-          userIncomeCategories: incomeCategories,
-          userExpenseCategories: expenseCategories,
+      final restored = await _restoreProfileCache();
+      if (restored) {
+        unawaited(
+          _refreshSessionFromServer(
+            timeout: const Duration(seconds: 8),
+            notify: true,
+          ),
         );
+        return;
+      }
 
-        // Set user ID for transaction filtering
-        TransactionRepository.setCurrentUserId(_state.userId);
-        StagedDraftRepository.setCurrentUserId(_state.userId);
-
-        debugPrint(
-          "✅ Session loaded - userId: ${_state.userId}, name: ${_state.userName}, isOnboarded: ${_state.isOnboarded}",
-        );
-        await _saveProfileCache();
+      final loaded = await _refreshSessionFromServer();
+      if (!loaded) {
+        _state = AuthState.initial().copyWith(isLoading: false);
         notifyListeners();
-      } else {
-        debugPrint("❌ Failed to load session: ${res.statusCode}");
-        final restored = await _restoreProfileCache();
-        if (!restored) {
-          _state = AuthState.initial().copyWith(isLoading: false);
-          notifyListeners();
-        }
       }
     } catch (e) {
       debugPrint("❌ Error loading session: $e");
