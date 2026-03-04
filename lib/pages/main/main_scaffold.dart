@@ -53,29 +53,50 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _showFirstRunGuide() async {
-    final steps = <({IconData icon, String title, String message})>[
+    final steps = <({IconData icon, String title, String message, String cta})>[
       (
         icon: Icons.waving_hand_rounded,
         title: 'Welcome to My Expenses',
         message:
-            'This quick guide walks you through how the app works so you can start with confidence.',
+            'This walkthrough will guide you page-by-page so you can confidently use every core feature.',
+        cta: 'Next',
       ),
       (
-        icon: Icons.dashboard_customize_rounded,
-        title: 'Know your tabs',
+        icon: Icons.dashboard_rounded,
+        title: 'Dashboard page',
         message:
-            'Dashboard = summaries + quick actions.\n'
-            'History = filter, edit, and delete records.\n'
-            'Analytics = weekly/monthly income vs expense trends.\n'
-            'Settings = profile, categories, currency, and preferences.',
+            'See weekly/monthly summaries, add transactions, upload bank PDF, and review staged rows before final confirmation.',
+        cta: 'Next',
+      ),
+      (
+        icon: Icons.history_rounded,
+        title: 'History page',
+        message:
+            'Filter by type/month/category, search by notes, edit existing records, and delete unwanted items with swipe.',
+        cta: 'Next',
+      ),
+      (
+        icon: Icons.bar_chart_rounded,
+        title: 'Analytics page',
+        message:
+            'View weekly and monthly trends for income vs expense. This helps identify spending patterns quickly.',
+        cta: 'Next',
+      ),
+      (
+        icon: Icons.settings_rounded,
+        title: 'Settings page',
+        message:
+            'Manage profile, categories, currency, newcomer guide, budget goals, recurring transactions, and app lock preferences.',
+        cta: 'Next',
       ),
       (
         icon: Icons.flag_rounded,
-        title: 'First actions to do now',
+        title: 'Recommended first steps',
         message:
             '1) Set your currency.\n'
             '2) Add or edit income/expense categories.\n'
             '3) Add your first transaction from the Add button.',
+        cta: 'Next',
       ),
       (
         icon: Icons.picture_as_pdf_rounded,
@@ -83,91 +104,158 @@ class _MainScaffoldState extends State<MainScaffold> {
         message:
             'Upload your bank PDF from Dashboard, then review staged rows carefully.\n\n'
             'Important rule: only selected rows with BOTH Type and Category are queued for confirmation.',
+        cta: 'Next',
       ),
       (
         icon: Icons.cloud_sync_rounded,
-        title: 'Sync and local-first behavior',
+        title: 'You are ready',
         message:
             'Add/edit/delete updates appear instantly in the app.\n'
             'Changes are synced in background, or manually via cloud icon.\n'
             'If pending count is above 0, tap Sync now.',
+        cta: 'OK',
       ),
     ];
 
     var currentStep = 0;
 
-    await showDialog<void>(
+    await showGeneralDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      barrierLabel: 'Guide',
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
             final step = steps[currentStep];
             final isFirst = currentStep == 0;
             final isLast = currentStep == steps.length - 1;
 
-            return AlertDialog(
-              title: Text('Getting Started • Step ${currentStep + 1}/${steps.length}'),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            return SafeArea(
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: Stack(
                   children: [
-                    LinearProgressIndicator(
-                      value: (currentStep + 1) / steps.length,
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 36, 20, 0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Getting Started • Step ${currentStep + 1}/${steps.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: (currentStep + 1) / steps.length,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 14),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(step.icon, size: 28),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    Align(
+                      alignment: Alignment.center,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(dialogContext).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
                             children: [
-                              Text(
-                                step.title,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+                              Icon(step.icon, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      step.title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      step.message,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(step.message),
                             ],
                           ),
                         ),
-                      ],
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                        child: Row(
+                          children: [
+                            if (!isFirst)
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () =>
+                                      setState(() => currentStep--),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white),
+                                  ),
+                                  child: const Text('Back'),
+                                ),
+                              ),
+                            if (!isFirst) const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () {
+                                  if (isLast) {
+                                    Navigator.pop(dialogContext);
+                                    return;
+                                  }
+                                  setState(() => currentStep++);
+                                },
+                                child: Text(step.cta),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 12,
+                      top: 8,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text(
+                          'Skip',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Skip tour'),
-                ),
-                if (!isFirst)
-                  TextButton(
-                    onPressed: () => setState(() => currentStep--),
-                    child: const Text('Back'),
-                  ),
-                FilledButton(
-                  onPressed: () {
-                    if (isLast) {
-                      Navigator.pop(dialogContext);
-                      return;
-                    }
-                    setState(() => currentStep++);
-                  },
-                  child: Text(isLast ? 'Done' : 'Next'),
-                ),
-              ],
             );
           },
         );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
       },
     );
   }
@@ -302,7 +390,11 @@ class _MainScaffoldState extends State<MainScaffold> {
 
       List<TransactionModel> toExport = txs;
       if (rangeStart != null && rangeEnd != null) {
-        final startDay = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+        final startDay = DateTime(
+          rangeStart.year,
+          rangeStart.month,
+          rangeStart.day,
+        );
         final endDay = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
         toExport = txs.where((t) {
           final d = DateTime(t.date.year, t.date.month, t.date.day);

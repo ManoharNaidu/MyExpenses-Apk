@@ -5,7 +5,9 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/constants/categories.dart';
 import '../../core/constants/currencies.dart';
 import '../../core/notifications/notification_service.dart';
+import '../../core/security/app_lock_service.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../data/transaction_repository.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -207,6 +209,38 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (!mounted) return;
                     setState(() => _notificationsEnabled = value);
                   },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.savings_outlined),
+                  title: const Text("Budget Goal"),
+                  subtitle: const Text(
+                    "Set monthly expense limit and alert preference",
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showBudgetGoalDialog(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.repeat_rounded),
+                  title: const Text("Recurring Transactions"),
+                  subtitle: const Text("Manage monthly recurring templates"),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showRecurringTransactionsSheet(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.lock_person_outlined),
+                  title: const Text("App Lock"),
+                  subtitle: Text(
+                    authProvider.state.appLockEnabled
+                        ? (authProvider.state.appLockUseBiometric
+                              ? 'Enabled (PIN + Biometric)'
+                              : 'Enabled (PIN)')
+                        : 'Disabled',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showAppLockDialog(context),
                 ),
                 const Divider(height: 1),
                 const ListTile(
@@ -733,6 +767,283 @@ class _SettingsPageState extends State<SettingsPage> {
             child: const Text("Logout"),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showBudgetGoalDialog(BuildContext context) async {
+    try {
+      final goal = await TransactionRepository.getBudgetGoal();
+      if (!context.mounted) return;
+
+      final amountCtrl = TextEditingController(
+        text: (goal['monthly_limit'] ?? 0).toString(),
+      );
+      var alertsEnabled = (goal['alerts_enabled'] as bool?) ?? true;
+
+      await showDialog(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setState) => AlertDialog(
+            title: const Text('Budget Goal'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Monthly budget limit',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Budget alerts'),
+                  subtitle: const Text('Warn me when I exceed monthly budget'),
+                  value: alertsEnabled,
+                  onChanged: (v) => setState(() => alertsEnabled = v),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+                  await TransactionRepository.updateBudgetGoal(
+                    monthlyLimit: amount,
+                    alertsEnabled: alertsEnabled,
+                  );
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  await showAppFeedbackDialog(
+                    context,
+                    title: 'Saved',
+                    message: 'Budget goal updated successfully.',
+                    type: AppFeedbackType.success,
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      await showAppFeedbackDialog(
+        context,
+        title: 'Failed',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
+    }
+  }
+
+  Future<void> _showRecurringTransactionsSheet(BuildContext context) async {
+    try {
+      final items = await TransactionRepository.getRecurringTransactions();
+      if (!context.mounted) return;
+
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setState) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recurring Transactions',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 12),
+                  if (items.isEmpty)
+                    const Text(
+                      'No recurring template yet. Add a transaction and enable "Repeat monthly".',
+                    )
+                  else
+                    SizedBox(
+                      height: 360,
+                      child: ListView.separated(
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, i) {
+                          final item = items[i];
+                          final isActive =
+                              (item['is_active'] as bool?) ?? false;
+                          return ListTile(
+                            title: Text(
+                              '${item['category']} • ${item['amount']}',
+                            ),
+                            subtitle: Text(
+                              '${item['type']} • day ${item['day_of_month'] ?? '-'}',
+                            ),
+                            trailing: Wrap(
+                              spacing: 8,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Duplicate now',
+                                  icon: const Icon(Icons.copy_rounded),
+                                  onPressed: () async {
+                                    await TransactionRepository.duplicateRecurringTransactionNow(
+                                      item['id'].toString(),
+                                    );
+                                    if (!dialogContext.mounted) return;
+                                    await showAppFeedbackDialog(
+                                      context,
+                                      title: 'Done',
+                                      message:
+                                          'Recurring transaction duplicated.',
+                                      type: AppFeedbackType.success,
+                                    );
+                                  },
+                                ),
+                                Switch(
+                                  value: isActive,
+                                  onChanged: (value) async {
+                                    await TransactionRepository.toggleRecurringTransaction(
+                                      item['id'].toString(),
+                                      value,
+                                    );
+                                    setState(() => item['is_active'] = value);
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      await showAppFeedbackDialog(
+        context,
+        title: 'Failed',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
+    }
+  }
+
+  Future<void> _showAppLockDialog(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final pinCtrl = TextEditingController();
+    var enabled = auth.state.appLockEnabled;
+    var biometric = auth.state.appLockUseBiometric;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
+          title: const Text('App Lock'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Enable app lock'),
+                value: enabled,
+                onChanged: (v) => setState(() => enabled = v),
+              ),
+              TextField(
+                controller: pinCtrl,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 8,
+                decoration: const InputDecoration(
+                  labelText: 'Set / Update PIN (min 4 digits)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              FutureBuilder<bool>(
+                future: AppLockService.canCheckBiometrics(),
+                builder: (context, snap) {
+                  final available = snap.data ?? false;
+                  return SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Use biometric unlock'),
+                    subtitle: Text(
+                      available
+                          ? 'Allow fingerprint/face unlock'
+                          : 'Biometric not available on this device',
+                    ),
+                    value: biometric && available,
+                    onChanged: available
+                        ? (v) => setState(() => biometric = v)
+                        : null,
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final pin = pinCtrl.text.trim();
+                if (enabled &&
+                    pin.isEmpty &&
+                    auth.state.appLockPinHash == null) {
+                  await showAppFeedbackDialog(
+                    context,
+                    title: 'PIN required',
+                    message: 'Please set a PIN to enable app lock.',
+                    type: AppFeedbackType.error,
+                  );
+                  return;
+                }
+                if (pin.isNotEmpty && pin.length < 4) {
+                  await showAppFeedbackDialog(
+                    context,
+                    title: 'Invalid PIN',
+                    message: 'PIN must be at least 4 digits.',
+                    type: AppFeedbackType.error,
+                  );
+                  return;
+                }
+
+                await AppLockService.updateSettings(
+                  auth,
+                  enabled: enabled,
+                  useBiometric: biometric,
+                  pin: pin.isEmpty ? null : pin,
+                );
+
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                if (!context.mounted) return;
+                await showAppFeedbackDialog(
+                  context,
+                  title: 'Saved',
+                  message: 'App lock settings updated.',
+                  type: AppFeedbackType.success,
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

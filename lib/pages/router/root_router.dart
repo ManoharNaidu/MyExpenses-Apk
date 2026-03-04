@@ -4,6 +4,7 @@ import '../../core/auth/auth_provider.dart';
 import '../auth/auth_page.dart';
 import '../onboarding/category_selection_page.dart';
 import '../main/main_scaffold.dart';
+import '../main/app_lock_gate.dart';
 
 class RootRouter extends StatelessWidget {
   const RootRouter({super.key});
@@ -16,6 +17,7 @@ class RootRouter extends StatelessWidget {
     }
     if (!auth.isLoggedIn) return const AuthPage();
     if (!auth.isOnboarded) return const CategorySelectionPage();
+    if (auth.appLockEnabled) return const AppLockGate();
     return const MainScaffold();
   }
 }

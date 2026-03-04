@@ -13,18 +13,24 @@ class TransactionModel {
   String? userId;
   DateTime date;
   String? description;
+  String? notes;
   TxType type;
   String category;
   double amount;
+  String? recurringId;
+  bool repeatMonthly;
 
   TransactionModel({
     this.id,
     this.userId,
     required this.date,
     this.description,
+    this.notes,
     required this.type,
     required this.category,
     required this.amount,
+    this.recurringId,
+    this.repeatMonthly = false,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -33,10 +39,13 @@ class TransactionModel {
       id: json['id']?.toString(),
       userId: json['user_id']?.toString(),
       date: date,
-      description: json['description'] as String?,
+      description: json['description']?.toString(),
+      notes: (json['notes'] ?? json['description'])?.toString(),
       type: _parseTxType(json['type']),
       category: json['category'],
       amount: (json['amount'] as num).toDouble(),
+      recurringId: json['recurring_id']?.toString(),
+      repeatMonthly: (json['repeat_monthly'] as bool?) ?? false,
     );
   }
 
@@ -44,13 +53,20 @@ class TransactionModel {
     final map = {
       // Don't send user_id - backend will extract it from JWT token
       'date': date.toIso8601String().split('T')[0], // date only (YYYY-MM-DD)
-      'description': description,
+      'description': notes ?? description,
+      'notes': notes ?? description,
       'type': type == TxType.income ? 'income' : 'expense',
       'category': category,
       'amount': amount,
     };
     if (id != null) {
       map['id'] = id;
+    }
+    if (recurringId != null && recurringId!.trim().isNotEmpty) {
+      map['recurring_id'] = recurringId;
+    }
+    if (repeatMonthly) {
+      map['repeat_monthly'] = true;
     }
     return map;
   }

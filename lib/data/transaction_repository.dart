@@ -26,6 +26,8 @@ class TransactionRepository {
 
   static final List<TransactionModel> _transactions = [];
   static final List<OutboxOperation> _outbox = [];
+  static List<String> _incomeCategories = [];
+  static List<String> _expenseCategories = [];
 
   static final _streamController =
       StreamController<List<TransactionModel>>.broadcast();
@@ -42,6 +44,10 @@ class TransactionRepository {
   static int get pendingOutboxCount => _outbox.length;
   static List<TransactionModel> get currentTransactions =>
       List.unmodifiable(_transactions);
+  static List<String> get incomeCategories =>
+      List.unmodifiable(_incomeCategories);
+  static List<String> get expenseCategories =>
+      List.unmodifiable(_expenseCategories);
   static Stream<int> getOutboxCountStream() => _outboxCountController.stream;
   static Stream<bool> getSyncingStream() => _syncingController.stream;
 
@@ -206,7 +212,9 @@ class TransactionRepository {
         ..addAll(
           decoded
               .whereType<Map>()
-              .map((e) => OutboxOperation.fromJson(Map<String, dynamic>.from(e)))
+              .map(
+                (e) => OutboxOperation.fromJson(Map<String, dynamic>.from(e)),
+              )
               .toList(),
         );
       _emitOutboxCount();
@@ -262,6 +270,120 @@ class TransactionRepository {
         .whereType<Map<String, dynamic>>()
         .map(TransactionModel.fromJson)
         .toList();
+  }
+
+  static Future<void> fetchCategories() async {
+    if (_currentUserId == null) return;
+    try {
+      final response = await ApiClient.get('/categories');
+      ApiClient.ensureSuccess(
+        response,
+        fallbackMessage: 'Failed to fetch categories',
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      List<String> parseList(dynamic raw) {
+        if (raw is List) {
+          return raw
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        }
+        return <String>[];
+      }
+
+      _incomeCategories = parseList(data['income_categories']);
+      _expenseCategories = parseList(data['expense_categories']);
+    } catch (e) {
+      debugPrint('❌ fetchCategories error: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getBudgetGoal() async {
+    final res = await ApiClient.get('/budget-goal');
+    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to load budget goal');
+    if (res.body.isEmpty) return {'monthly_limit': 0.0, 'alerts_enabled': true};
+    return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+  }
+
+  static Future<Map<String, dynamic>> updateBudgetGoal({
+    required double monthlyLimit,
+    required bool alertsEnabled,
+  }) async {
+    final res = await ApiClient.put('/budget-goal', {
+      'monthly_limit': monthlyLimit,
+      'alerts_enabled': alertsEnabled,
+    });
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to update budget goal',
+    );
+    if (res.body.isEmpty) {
+      return {
+        'budget_goal': {
+          'monthly_limit': monthlyLimit,
+          'alerts_enabled': alertsEnabled,
+        },
+      };
+    }
+    return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+  }
+
+  static Future<Map<String, dynamic>> getBudgetProgress({
+    required int year,
+    required int month,
+  }) async {
+    final res = await ApiClient.get(
+      '/budget-goal/progress?year=$year&month=$month',
+    );
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to load budget progress',
+    );
+    if (res.body.isEmpty) return {};
+    return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+  }
+
+  static Future<List<Map<String, dynamic>>> getRecurringTransactions() async {
+    final res = await ApiClient.get('/recurring-transactions');
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to load recurring transactions',
+    );
+    if (res.body.isEmpty) return const [];
+    final decoded = jsonDecode(res.body);
+    if (decoded is! List) return const [];
+    return decoded
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  static Future<void> toggleRecurringTransaction(
+    String recurringId,
+    bool isActive,
+  ) async {
+    final res = await ApiClient.put('/recurring-transactions/$recurringId', {
+      'is_active': isActive,
+    });
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to update recurring transaction',
+    );
+  }
+
+  static Future<void> duplicateRecurringTransactionNow(
+    String recurringId,
+  ) async {
+    final res = await ApiClient.post(
+      '/recurring-transactions/$recurringId/duplicate-now',
+      {},
+    );
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to duplicate recurring transaction',
+    );
+    await loadInitial(forceRefresh: true);
   }
 
   /// Loads first page (10 records), optionally forcing network refresh.
@@ -364,9 +486,12 @@ class TransactionRepository {
       userId: tx.userId,
       date: tx.date,
       description: tx.description,
+      notes: tx.notes,
       type: tx.type,
       category: tx.category,
       amount: tx.amount,
+      recurringId: tx.recurringId,
+      repeatMonthly: tx.repeatMonthly,
     );
 
     _transactions.insert(0, localTx);
@@ -407,7 +532,8 @@ class TransactionRepository {
 
     if (_isLocalId(id)) {
       _outbox.removeWhere(
-        (op) => op.entityId == id &&
+        (op) =>
+            op.entityId == id &&
             (op.type == OutboxOperationType.createTransaction ||
                 op.type == OutboxOperationType.updateTransaction),
       );
@@ -567,11 +693,15 @@ class TransactionRepository {
               (item) =>
                   (item['id']?.toString().trim().isNotEmpty ?? false) &&
                   (item['final_type']?.toString().trim().isNotEmpty ?? false) &&
-                  (item['final_category']?.toString().trim().isNotEmpty ?? false),
+                  (item['final_category']?.toString().trim().isNotEmpty ??
+                      false),
             )
             .toList();
         if (payload.isEmpty) return;
-        final res = await ApiClient.post('/confirm-staging-transactions', payload);
+        final res = await ApiClient.post(
+          '/confirm-staging-transactions',
+          payload,
+        );
         ApiClient.ensureSuccess(
           res,
           fallbackMessage: 'Failed to sync staged confirmations',

@@ -9,6 +9,9 @@ class AuthState {
   final List<String>? userIncomeCategories;
   final List<String>? userExpenseCategories;
   final String? userCurrency;
+  final bool appLockEnabled;
+  final bool appLockUseBiometric;
+  final String? appLockPinHash;
 
   List<String> get effectiveIncomeCategories =>
       userIncomeCategories ?? const [];
@@ -35,6 +38,9 @@ class AuthState {
     this.userIncomeCategories,
     this.userExpenseCategories,
     this.userCurrency,
+    this.appLockEnabled = false,
+    this.appLockUseBiometric = false,
+    this.appLockPinHash,
   });
 
   factory AuthState.initial() => AuthState(
@@ -48,6 +54,9 @@ class AuthState {
     userIncomeCategories: null,
     userExpenseCategories: null,
     userCurrency: null,
+    appLockEnabled: false,
+    appLockUseBiometric: false,
+    appLockPinHash: null,
   );
 
   AuthState copyWith({
@@ -61,6 +70,9 @@ class AuthState {
     List<String>? userIncomeCategories,
     List<String>? userExpenseCategories,
     String? userCurrency,
+    bool? appLockEnabled,
+    bool? appLockUseBiometric,
+    String? appLockPinHash,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -70,11 +82,13 @@ class AuthState {
       userEmail: userEmail ?? this.userEmail,
       userName: userName ?? this.userName,
       userCategories: userCategories ?? this.userCategories,
-      userIncomeCategories:
-          userIncomeCategories ?? this.userIncomeCategories,
+      userIncomeCategories: userIncomeCategories ?? this.userIncomeCategories,
       userExpenseCategories:
           userExpenseCategories ?? this.userExpenseCategories,
       userCurrency: userCurrency ?? this.userCurrency,
+      appLockEnabled: appLockEnabled ?? this.appLockEnabled,
+      appLockUseBiometric: appLockUseBiometric ?? this.appLockUseBiometric,
+      appLockPinHash: appLockPinHash ?? this.appLockPinHash,
     );
   }
 }

@@ -364,7 +364,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: const Text("Add"),
           ),
           body: RefreshIndicator(
-            onRefresh: () => TransactionRepository.loadInitial(forceRefresh: true),
+            onRefresh: () =>
+                TransactionRepository.loadInitial(forceRefresh: true),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: ListView(
@@ -387,102 +388,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 24),
                   ],
                   SummaryCard(
-                  title: "This Week (Net)",
-                  value: formatMoney(weekNet),
-                  icon: Icons.date_range_rounded,
-                ),
-                SummaryCard(
-                  title: "This Month (Net)",
-                  value: formatMoney(monthNet),
-                  icon: Icons.calendar_month_rounded,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _isUploadingPdf ? null : _uploadPdfAndReview,
-                    icon: _isUploadingPdf
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.picture_as_pdf_rounded),
-                    label: Text(
-                      _isUploadingPdf ? 'Uploading PDF...' : 'Upload Bank PDF',
-                    ),
+                    title: "This Week (Net)",
+                    value: formatMoney(weekNet),
+                    icon: Icons.date_range_rounded,
                   ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _reviewStagedTransactions,
-                    icon: const Icon(Icons.playlist_add_check_circle_outlined),
-                    label: const Text('Review staged transactions'),
+                  SummaryCard(
+                    title: "This Month (Net)",
+                    value: formatMoney(monthNet),
+                    icon: Icons.calendar_month_rounded,
                   ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SummaryCard(
-                        title: "Week Income",
-                        value: formatMoney(weekIncome),
-                        icon: Icons.arrow_downward_rounded,
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isUploadingPdf ? null : _uploadPdfAndReview,
+                      icon: _isUploadingPdf
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.picture_as_pdf_rounded),
+                      label: Text(
+                        _isUploadingPdf
+                            ? 'Uploading PDF...'
+                            : 'Upload Bank PDF',
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SummaryCard(
-                        title: "Week Expense",
-                        value: formatMoney(weekExpense),
-                        icon: Icons.arrow_upward_rounded,
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _reviewStagedTransactions,
+                      icon: const Icon(
+                        Icons.playlist_add_check_circle_outlined,
                       ),
+                      label: const Text('Review staged transactions'),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text("Recent", style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                if (txs.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Your recent transactions will appear here.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.6),
-                          ),
-                    ),
-                  )
-                else
-                  ...txs.take(10).map(
-                        (t) => Card(
-                          child: ListTile(
-                            title: Text(
-                              t.category,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800),
-                            ),
-                            subtitle: Text(
-                              "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
-                            ),
-                            trailing: Text(
-                              '${t.type == TxType.income ? "+" : "-"}${currencyOption.symbol}${t.amount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: t.type == TxType.income
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SummaryCard(
+                          title: "Week Income",
+                          value: formatMoney(weekIncome),
+                          icon: Icons.arrow_downward_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SummaryCard(
+                          title: "Week Expense",
+                          value: formatMoney(weekExpense),
+                          icon: Icons.arrow_upward_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    "Recent",
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  if (txs.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Your recent transactions will appear here.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    )
+                  else
+                    ...txs
+                        .take(10)
+                        .map(
+                          (t) => Card(
+                            child: ListTile(
+                              title: Text(
+                                t.category,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              subtitle: Text(
+                                "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
+                              ),
+                              trailing: Text(
+                                '${t.type == TxType.income ? "+" : "-"}${currencyOption.symbol}${t.amount.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  color: t.type == TxType.income
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-              ],
+                ],
+              ),
             ),
           ),
         );

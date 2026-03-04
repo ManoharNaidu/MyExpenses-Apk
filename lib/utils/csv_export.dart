@@ -29,7 +29,7 @@ class CsvExport {
       'Type',
       'Category',
       'Amount',
-      'Description',
+      'Notes',
     ];
 
     final rows = txs.map(
@@ -40,7 +40,7 @@ class CsvExport {
         t.type == TxType.income ? 'Income' : 'Expense',
         t.category,
         t.amount.toStringAsFixed(2),
-        t.description,
+        t.notes ?? t.description,
       ],
     );
 

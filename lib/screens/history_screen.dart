@@ -25,7 +25,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     TransactionRepository.ensureInitialized();
-    _searchController.addListener(() => setState(() => searchQuery = _searchController.text.trim().toLowerCase()));
+    unawaited(_loadCategories());
+    _searchController.addListener(
+      () => setState(
+        () => searchQuery = _searchController.text.trim().toLowerCase(),
+      ),
+    );
+  }
+
+  static void unawaited(Future<void> f) => f;
+
+  Future<void> _loadCategories() async {
+    await TransactionRepository.fetchCategories();
+    if (mounted) setState(() {});
   }
 
   void _onScroll() {
@@ -49,8 +61,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   bool _matchesSearch(TransactionModel t) {
     if (searchQuery.isEmpty) return true;
+    final notes = (t.notes ?? t.description ?? '').toLowerCase();
     return (t.category.toLowerCase().contains(searchQuery)) ||
-        ((t.description ?? '').toLowerCase().contains(searchQuery)) ||
+        notes.contains(searchQuery) ||
         t.amount.toString().contains(searchQuery);
   }
 
@@ -70,13 +83,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final all = snapshot.data ?? [];
 
         final months = <String>{};
-        final cats = <String>{};
+        final cats = <String>{
+          ...TransactionRepository.incomeCategories,
+          ...TransactionRepository.expenseCategories,
+        };
 
         for (final t in all) {
           months.add(
             "${t.date.year}-${t.date.month.toString().padLeft(2, '0')}",
           );
-          cats.add(t.category);
+          if (TransactionRepository.incomeCategories.isEmpty &&
+              TransactionRepository.expenseCategories.isEmpty) {
+            cats.add(t.category);
+          }
         }
 
         List<TransactionModel> filtered = all.where((t) {
@@ -112,7 +131,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: const Icon(Icons.add_rounded),
           ),
           body: RefreshIndicator(
-            onRefresh: () => TransactionRepository.loadInitial(forceRefresh: true),
+            onRefresh: () =>
+                TransactionRepository.loadInitial(forceRefresh: true),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -121,7 +141,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search by category, description, amount...',
+                      hintText: 'Search by category, notes, amount...',
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: searchQuery.isNotEmpty
                           ? IconButton(
@@ -141,53 +161,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(height: 10),
                   // Filters
                   Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: typeFilter,
-                        items: const ["All", "Income", "Expense"]
-                            .map(
-                              (v) => DropdownMenuItem(value: v, child: Text(v)),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setState(() => typeFilter = v ?? "All"),
-                        decoration: const InputDecoration(labelText: "Type"),
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: typeFilter,
+                          items: const ["All", "Income", "Expense"]
+                              .map(
+                                (v) =>
+                                    DropdownMenuItem(value: v, child: Text(v)),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => typeFilter = v ?? "All"),
+                          decoration: const InputDecoration(labelText: "Type"),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: monthFilter,
-                        items:
-                            [
-                                  "All",
-                                  ...months.toList()
-                                    ..sort((a, b) => b.compareTo(a)),
-                                ]
-                                .map(
-                                  (v) => DropdownMenuItem(
-                                    value: v,
-                                    child: Text(v),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (v) =>
-                            setState(() => monthFilter = v ?? "All"),
-                        decoration: const InputDecoration(labelText: "Month"),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: monthFilter,
+                          items:
+                              [
+                                    "All",
+                                    ...months.toList()
+                                      ..sort((a, b) => b.compareTo(a)),
+                                  ]
+                                  .map(
+                                    (v) => DropdownMenuItem(
+                                      value: v,
+                                      child: Text(v),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (v) =>
+                              setState(() => monthFilter = v ?? "All"),
+                          decoration: const InputDecoration(labelText: "Month"),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: categoryFilter,
-                  items: ["All", ...cats.toList()..sort()]
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                      .toList(),
-                  onChanged: (v) => setState(() => categoryFilter = v ?? "All"),
-                  decoration: const InputDecoration(labelText: "Category"),
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: categoryFilter,
+                    items: ["All", ...cats.toList()..sort()]
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => categoryFilter = v ?? "All"),
+                    decoration: const InputDecoration(labelText: "Category"),
+                  ),
                   const SizedBox(height: 12),
                   if (!isOnline)
                     Container(
@@ -219,91 +241,100 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               context: context,
                               isScrollControlled: true,
                               showDragHandle: true,
-                              builder: (_) => AddTransactionModal(onSaved: () {}),
+                              builder: (_) =>
+                                  AddTransactionModal(onSaved: () {}),
                             ),
                           )
                         : filtered.isEmpty
-                            ? EmptyState(
-                                icon: Icons.filter_list_rounded,
-                                title: 'No results',
-                                message:
-                                    'No transactions match your filters or search. Try changing filters or search term.',
-                                actionLabel: 'Clear search & filters',
-                                onAction: () {
-                                  setState(() {
-                                    typeFilter = "All";
-                                    categoryFilter = "All";
-                                    monthFilter = "All";
-                                    _searchController.clear();
-                                    searchQuery = "";
-                                  });
-                                },
-                              )
-                            : ListView.builder(
-                                controller: _scrollController,
-                                itemCount: listItemCount,
-                                itemBuilder: (context, i) {
-                                  if (i >= filtered.length) {
-                                    if (isLoading) {
-                                      return const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 16),
-                                        child: Center(child: CircularProgressIndicator()),
-                                      );
-                                    }
-                                    if (hasMore && isOnline) {
-                                      return const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 16),
-                                        child: Center(
-                                          child: Text('Scroll to load more...'),
-                                        ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  }
-                                  final tx = filtered[i];
-                                  return Dismissible(
-                                    key: ValueKey(
-                                      tx.id ?? '${tx.date.toIso8601String()}-$i',
-                                    ),
-                                    direction: DismissDirection.endToStart,
-                                    background: Container(
-                                      margin: const EdgeInsets.symmetric(vertical: 4),
-                                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                                      alignment: Alignment.centerRight,
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.shade600,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(
-                                        Icons.delete_outline_rounded,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    onDismissed: (_) async {
-                                      if (tx.id != null) {
-                                        await TransactionRepository.delete(tx.id!);
-                                      }
-                                    },
-                                    child: TransactionTile(
-                                      tx: tx,
-                                      onDelete: () async {
-                                        if (tx.id != null) {
-                                          await TransactionRepository.delete(tx.id!);
-                                        }
-                                      },
-                                      onEdit: () => showModalBottomSheet(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        showDragHandle: true,
-                                        builder: (_) => AddTransactionModal(
-                                          existing: tx,
-                                          onSaved: () {},
-                                        ),
-                                      ),
+                        ? EmptyState(
+                            icon: Icons.filter_list_rounded,
+                            title: 'No results',
+                            message:
+                                'No transactions match your filters or search. Try changing filters or search term.',
+                            actionLabel: 'Clear search & filters',
+                            onAction: () {
+                              setState(() {
+                                typeFilter = "All";
+                                categoryFilter = "All";
+                                monthFilter = "All";
+                                _searchController.clear();
+                                searchQuery = "";
+                              });
+                            },
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            itemCount: listItemCount,
+                            itemBuilder: (context, i) {
+                              if (i >= filtered.length) {
+                                if (isLoading) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
                                     ),
                                   );
+                                }
+                                if (hasMore && isOnline) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: Text('Scroll to load more...'),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              }
+                              final tx = filtered[i];
+                              return Dismissible(
+                                key: ValueKey(
+                                  tx.id ?? '${tx.date.toIso8601String()}-$i',
+                                ),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
+                                  alignment: Alignment.centerRight,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade600,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onDismissed: (_) async {
+                                  if (tx.id != null) {
+                                    await TransactionRepository.delete(tx.id!);
+                                  }
                                 },
-                              ),
+                                child: TransactionTile(
+                                  tx: tx,
+                                  onDelete: () async {
+                                    if (tx.id != null) {
+                                      await TransactionRepository.delete(
+                                        tx.id!,
+                                      );
+                                    }
+                                  },
+                                  onEdit: () => showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    showDragHandle: true,
+                                    builder: (_) => AddTransactionModal(
+                                      existing: tx,
+                                      onSaved: () {},
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),

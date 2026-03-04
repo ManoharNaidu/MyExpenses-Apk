@@ -23,7 +23,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   TxType type = TxType.expense;
   String category = "Misc";
   DateTime date = DateTime.now();
-  bool _initialized = false;
+  bool repeatMonthly = false;
 
   final amountCtrl = TextEditingController();
   final descriptionCtrl = TextEditingController();
@@ -48,8 +48,8 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       category = e.category;
       date = e.date;
       amountCtrl.text = e.amount.toStringAsFixed(2);
-      descriptionCtrl.text = e.description ?? '';
-      _initialized = true;
+      descriptionCtrl.text = e.notes ?? e.description ?? '';
+      repeatMonthly = e.repeatMonthly;
       return;
     }
     unawaited(_loadLastUsed());
@@ -68,7 +68,6 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       if (lastCategory != null && lastCategory.isNotEmpty) {
         category = lastCategory;
       }
-      _initialized = true;
     });
   }
 
@@ -185,8 +184,18 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
             // description
             TextField(
               controller: descriptionCtrl,
-              decoration: const InputDecoration(
-                labelText: "Description (optional)",
+              decoration: const InputDecoration(labelText: "Notes (optional)"),
+            ),
+
+            const SizedBox(height: 8),
+
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: repeatMonthly,
+              onChanged: (value) => setState(() => repeatMonthly = value),
+              title: const Text('Repeat monthly'),
+              subtitle: const Text(
+                'Creates a recurring schedule so this transaction can be reused monthly.',
               ),
             ),
 
@@ -251,10 +260,17 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       description: descriptionCtrl.text.trim().isEmpty
           ? null
           : descriptionCtrl.text.trim(),
+      notes: descriptionCtrl.text.trim().isEmpty
+          ? null
+          : descriptionCtrl.text.trim(),
+      repeatMonthly: repeatMonthly,
     );
 
     if (widget.existing == null) {
-      await SecureStorage.writeString(_kLastTxTypeKey, type == TxType.income ? 'income' : 'expense');
+      await SecureStorage.writeString(
+        _kLastTxTypeKey,
+        type == TxType.income ? 'income' : 'expense',
+      );
       await SecureStorage.writeString(_kLastTxCategoryKey, category);
     }
 

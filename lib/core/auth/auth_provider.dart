@@ -132,6 +132,9 @@ class AuthProvider extends ChangeNotifier {
     List<String>? userIncomeCategories,
     List<String>? userExpenseCategories,
     String? userCurrency,
+    bool? appLockEnabled,
+    bool? appLockUseBiometric,
+    String? appLockPinHash,
   }) {
     return AuthState(
       isLoading: isLoading ?? _state.isLoading,
@@ -145,6 +148,9 @@ class AuthProvider extends ChangeNotifier {
       userExpenseCategories:
           userExpenseCategories ?? _state.userExpenseCategories,
       userCurrency: userCurrency ?? _state.userCurrency,
+      appLockEnabled: appLockEnabled ?? _state.appLockEnabled,
+      appLockUseBiometric: appLockUseBiometric ?? _state.appLockUseBiometric,
+      appLockPinHash: appLockPinHash ?? _state.appLockPinHash,
     );
   }
 
@@ -164,6 +170,11 @@ class AuthProvider extends ChangeNotifier {
       'categories': _state.userCategories ?? <String>[],
       'income_category': _state.userIncomeCategories ?? <String>[],
       'expense_cateogry': _state.userExpenseCategories ?? <String>[],
+      'app_lock': {
+        'enabled': _state.appLockEnabled,
+        'use_biometric': _state.appLockUseBiometric,
+        'pin_hash': _state.appLockPinHash,
+      },
     };
     await SecureStorage.writeString(_profileKey, jsonEncode(payload));
   }
@@ -178,6 +189,7 @@ class AuthProvider extends ChangeNotifier {
       final parsedCategories = _extractCategories(data);
       final incomeCategories = parsedCategories.income;
       final expenseCategories = parsedCategories.expense;
+      final appLock = data['app_lock'] as Map<String, dynamic>?;
 
       _state = AuthState(
         isLoading: false,
@@ -190,6 +202,9 @@ class AuthProvider extends ChangeNotifier {
         userCategories: categoriesList,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
+        appLockEnabled: (appLock?['enabled'] as bool?) ?? false,
+        appLockUseBiometric: (appLock?['use_biometric'] as bool?) ?? false,
+        appLockPinHash: appLock?['pin_hash']?.toString(),
       );
       TransactionRepository.setCurrentUserId(_state.userId);
       StagedDraftRepository.setCurrentUserId(_state.userId);
@@ -212,6 +227,10 @@ class AuthProvider extends ChangeNotifier {
       final parsedCategories = _extractCategories(data);
       final incomeCategories = parsedCategories.income;
       final expenseCategories = parsedCategories.expense;
+      final appLockRaw = data['app_lock'];
+      final appLock = appLockRaw is Map<String, dynamic>
+          ? appLockRaw
+          : (appLockRaw is Map ? Map<String, dynamic>.from(appLockRaw) : null);
       final categoriesList = {
         ...incomeCategories,
         ...expenseCategories,
@@ -228,6 +247,9 @@ class AuthProvider extends ChangeNotifier {
         userCategories: categoriesList,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
+        appLockEnabled: (appLock?['enabled'] as bool?) ?? false,
+        appLockUseBiometric: (appLock?['use_biometric'] as bool?) ?? false,
+        appLockPinHash: appLock?['pin_hash']?.toString(),
       );
 
       TransactionRepository.setCurrentUserId(_state.userId);
@@ -382,14 +404,10 @@ class AuthProvider extends ChangeNotifier {
       final res = await ApiClient.post("/auth/onboarding", payload);
       ApiClient.ensureSuccess(res, fallbackMessage: 'Onboarding failed');
 
-      _state = AuthState(
+      _state = _copyState(
         isLoading: false,
         isLoggedIn: true,
         isOnboarded: true,
-        userId: _state.userId,
-        userEmail: _state.userEmail,
-        userName: _state.userName,
-        userCurrency: _state.userCurrency,
         userCategories: resolvedCategories,
         userIncomeCategories: resolvedIncomeCategories,
         userExpenseCategories: resolvedExpenseCategories,
@@ -409,17 +427,10 @@ class AuthProvider extends ChangeNotifier {
 
       ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update name');
 
-      _state = AuthState(
+      _state = _copyState(
         isLoading: false,
         isLoggedIn: true,
-        isOnboarded: _state.isOnboarded,
-        userId: _state.userId,
-        userEmail: _state.userEmail,
         userName: newName,
-        userCurrency: _state.userCurrency,
-        userIncomeCategories: _state.userIncomeCategories,
-        userExpenseCategories: _state.userExpenseCategories,
-        userCategories: _state.userCategories,
       );
       await _saveProfileCache();
       notifyListeners();
@@ -486,14 +497,9 @@ class AuthProvider extends ChangeNotifier {
         fallbackMessage: 'Failed to update categories',
       );
 
-      _state = AuthState(
+      _state = _copyState(
         isLoading: false,
         isLoggedIn: true,
-        isOnboarded: _state.isOnboarded,
-        userId: _state.userId,
-        userEmail: _state.userEmail,
-        userName: _state.userName,
-        userCurrency: _state.userCurrency,
         userCategories: mergedCategories,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
@@ -530,6 +536,31 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateAppLockSettings({
+    required bool enabled,
+    required bool useBiometric,
+    required String? pinHash,
+  }) async {
+    final res = await ApiClient.put('/settings/app-lock', {
+      'enabled': enabled,
+      'use_biometric': useBiometric,
+      'pin_hash': pinHash,
+    });
+
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to update app lock settings',
+    );
+
+    _state = _copyState(
+      appLockEnabled: enabled,
+      appLockUseBiometric: useBiometric,
+      appLockPinHash: pinHash,
+    );
+    await _saveProfileCache();
+    notifyListeners();
+  }
+
   Future<void> submitFeedback(String description) async {
     try {
       final trimmedDescription = description.trim();
@@ -542,12 +573,9 @@ class AuthProvider extends ChangeNotifier {
         throw ApiException('Unable to identify user. Please login again.');
       }
 
-      final res = await ApiClient.post(
-        '/feedback',
-        {
-          'description': trimmedDescription,
-        },
-      );
+      final res = await ApiClient.post('/feedback', {
+        'description': trimmedDescription,
+      });
 
       ApiClient.ensureSuccess(
         res,

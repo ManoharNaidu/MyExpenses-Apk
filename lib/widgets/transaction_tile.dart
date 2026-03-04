@@ -22,6 +22,7 @@ class TransactionTile extends StatelessWidget {
     final isIncome = tx.type == TxType.income;
     final amt = (isIncome ? '+' : '-') + tx.amount.toStringAsFixed(2);
     final date = DateFormat('dd MMM yyyy').format(tx.date);
+    final notes = (tx.notes ?? tx.description ?? '').trim();
 
     return Card(
       child: ListTile(
@@ -52,7 +53,7 @@ class TransactionTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${(tx.description ?? '').isNotEmpty ? " • ${tx.description}" : ""}',
+          '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${notes.isNotEmpty ? " • $notes" : ""}',
         ),
         trailing: Text(
           amt,
