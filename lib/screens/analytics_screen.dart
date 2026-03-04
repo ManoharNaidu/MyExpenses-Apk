@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../data/transaction_repository.dart';
 import '../models/transaction_model.dart';
 import '../utils/date_utils.dart';
+import '../widgets/empty_state.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -75,6 +76,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             .map((k) => monthly[k]!["Expense"]!)
             .toList();
 
+        if (txs.isEmpty) {
+          return const EmptyState(
+            icon: Icons.bar_chart_rounded,
+            title: 'No data for analytics yet',
+            message:
+                'Add transactions or upload a bank PDF to see weekly and monthly income vs expense trends.',
+          );
+        }
+
+        final theme = Theme.of(context);
+        final primaryColor = theme.colorScheme.primary;
+        final surfaceColor = theme.colorScheme.surfaceContainerHighest;
+
         return Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -82,7 +96,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               // Tab Selector
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: surfaceColor,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -94,7 +108,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: _selectedTab == 0
-                                ? Colors.blue
+                                ? primaryColor
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -104,8 +118,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: _selectedTab == 0
-                                  ? Colors.white
-                                  : Colors.black54,
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                         ),
@@ -118,7 +132,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: _selectedTab == 1
-                                ? Colors.blue
+                                ? primaryColor
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -128,8 +142,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: _selectedTab == 1
-                                  ? Colors.white
-                                  : Colors.black54,
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                         ),
@@ -139,10 +153,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Chart
               Expanded(
                 child: _selectedTab == 0
                     ? _barChart(
+                        context: context,
                         labels: weeklyKeys
                             .map((d) => DateUtilsX.weekLabel(d))
                             .toList(),
@@ -152,6 +166,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         bName: "Expense",
                       )
                     : _barChart(
+                        context: context,
                         labels: monthlyKeys,
                         a: monthlyIncome,
                         b: monthlyExpense,
@@ -167,6 +182,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _barChart({
+    required BuildContext context,
     required List<String> labels,
     required List<double> a,
     required List<double> b,
@@ -175,13 +191,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }) {
     final n = labels.length;
     if (n == 0) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Center(child: Text("No data yet.")),
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Text(
+              "No data for this period.",
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
         ),
       );
     }
+
+    final theme = Theme.of(context);
+    final incomeColor = Colors.green;
+    final expenseColor = Colors.red.shade700;
 
     final groups = <BarChartGroupData>[];
     for (int i = 0; i < n; i++) {
@@ -192,13 +217,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             BarChartRodData(
               toY: a[i],
               width: 6,
-              color: Colors.green,
+              color: incomeColor,
               borderRadius: BorderRadius.circular(4),
             ),
             BarChartRodData(
               toY: b[i],
               width: 6,
-              color: Colors.red,
+              color: expenseColor,
               borderRadius: BorderRadius.circular(4),
             ),
           ],
@@ -254,9 +279,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
                               labels[idx],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                           );

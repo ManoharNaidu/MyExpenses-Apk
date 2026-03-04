@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data/transaction_repository.dart';
 import '../models/transaction_model.dart';
 import '../widgets/add_transaction_modal.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/transaction_tile.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -15,13 +16,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String typeFilter = "All";
   String categoryFilter = "All";
   String monthFilter = "All"; // yyyy-mm
+  String searchQuery = "";
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     TransactionRepository.ensureInitialized();
+    _searchController.addListener(() => setState(() => searchQuery = _searchController.text.trim().toLowerCase()));
   }
 
   void _onScroll() {
@@ -39,7 +43,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  bool _matchesSearch(TransactionModel t) {
+    if (searchQuery.isEmpty) return true;
+    return (t.category.toLowerCase().contains(searchQuery)) ||
+        ((t.description ?? '').toLowerCase().contains(searchQuery)) ||
+        t.amount.toString().contains(searchQuery);
   }
 
   @override
@@ -77,8 +89,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           final mKey =
               "${t.date.year}-${t.date.month.toString().padLeft(2, '0')}";
           final monthOk = monthFilter == "All" || mKey == monthFilter;
+          final searchOk = _matchesSearch(t);
 
-          return typeOk && catOk && monthOk;
+          return typeOk && catOk && monthOk && searchOk;
         }).toList();
 
         final hasMore = TransactionRepository.hasMore;
@@ -98,12 +111,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             child: const Icon(Icons.add_rounded),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Filters
-                Row(
+          body: RefreshIndicator(
+            onRefresh: () => TransactionRepository.loadInitial(forceRefresh: true),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Search
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by category, description, amount...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Filters
+                  Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
@@ -151,97 +188,125 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   onChanged: (v) => setState(() => categoryFilter = v ?? "All"),
                   decoration: const InputDecoration(labelText: "Category"),
                 ),
-                const SizedBox(height: 12),
-                if (!isOnline)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                  const SizedBox(height: 12),
+                  if (!isOnline)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: const Text(
+                        'You are offline. Showing cached transactions.',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.orange.shade300),
-                    ),
-                    child: const Text(
-                      'You are offline. Showing cached transactions.',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: listItemCount,
-                    itemBuilder: (context, i) {
-                      if (i >= filtered.length) {
-                        if (isLoading) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        if (hasMore && isOnline) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Center(
-                              child: Text('Scroll to load more...'),
+                  Expanded(
+                    child: all.isEmpty
+                        ? EmptyState(
+                            icon: Icons.history_rounded,
+                            title: 'No transactions yet',
+                            message:
+                                'Add your first transaction or upload a bank PDF from the Dashboard.',
+                            actionLabel: 'Add transaction',
+                            onAction: () => showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              showDragHandle: true,
+                              builder: (_) => AddTransactionModal(onSaved: () {}),
                             ),
-                          );
-                        }
-
-                        return const SizedBox.shrink();
-                      }
-
-                      final tx = filtered[i];
-                      return Dismissible(
-                        key: ValueKey(
-                          tx.id ?? '${tx.date.toIso8601String()}-$i',
-                        ),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          alignment: Alignment.centerRight,
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade600,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                        onDismissed: (_) async {
-                          if (tx.id != null) {
-                            await TransactionRepository.delete(tx.id!);
-                          }
-                        },
-                        child: TransactionTile(
-                          tx: tx,
-                          onDelete: () async {
-                            if (tx.id != null) {
-                              await TransactionRepository.delete(tx.id!);
-                            }
-                          },
-                          onEdit: () => showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            showDragHandle: true,
-                            builder: (_) => AddTransactionModal(
-                              existing: tx,
-                              onSaved: () {},
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                          )
+                        : filtered.isEmpty
+                            ? EmptyState(
+                                icon: Icons.filter_list_rounded,
+                                title: 'No results',
+                                message:
+                                    'No transactions match your filters or search. Try changing filters or search term.',
+                                actionLabel: 'Clear search & filters',
+                                onAction: () {
+                                  setState(() {
+                                    typeFilter = "All";
+                                    categoryFilter = "All";
+                                    monthFilter = "All";
+                                    _searchController.clear();
+                                    searchQuery = "";
+                                  });
+                                },
+                              )
+                            : ListView.builder(
+                                controller: _scrollController,
+                                itemCount: listItemCount,
+                                itemBuilder: (context, i) {
+                                  if (i >= filtered.length) {
+                                    if (isLoading) {
+                                      return const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 16),
+                                        child: Center(child: CircularProgressIndicator()),
+                                      );
+                                    }
+                                    if (hasMore && isOnline) {
+                                      return const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 16),
+                                        child: Center(
+                                          child: Text('Scroll to load more...'),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  }
+                                  final tx = filtered[i];
+                                  return Dismissible(
+                                    key: ValueKey(
+                                      tx.id ?? '${tx.date.toIso8601String()}-$i',
+                                    ),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      margin: const EdgeInsets.symmetric(vertical: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                                      alignment: Alignment.centerRight,
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade600,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    onDismissed: (_) async {
+                                      if (tx.id != null) {
+                                        await TransactionRepository.delete(tx.id!);
+                                      }
+                                    },
+                                    child: TransactionTile(
+                                      tx: tx,
+                                      onDelete: () async {
+                                        if (tx.id != null) {
+                                          await TransactionRepository.delete(tx.id!);
+                                        }
+                                      },
+                                      onEdit: () => showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        showDragHandle: true,
+                                        builder: (_) => AddTransactionModal(
+                                          existing: tx,
+                                          onSaved: () {},
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

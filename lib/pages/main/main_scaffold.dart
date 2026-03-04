@@ -9,6 +9,7 @@ import '../../screens/history_screen.dart';
 import '../../screens/analytics_screen.dart';
 import 'settings_page.dart';
 import '../../data/transaction_repository.dart';
+import '../../models/transaction_model.dart';
 import '../../utils/csv_export.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
@@ -254,7 +255,71 @@ class _MainScaffoldState extends State<MainScaffold> {
         return;
       }
 
-      final result = await CsvExport.exportTransactions(txs);
+      final DateTime? rangeStart;
+      final DateTime? rangeEnd;
+      final useRange = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Export transactions'),
+          content: const Text(
+            'Export all transactions, or choose a date range to export only a subset.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Export all'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Choose date range'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (useRange == true) {
+        final now = DateTime.now();
+        final start = await showDatePicker(
+          context: context,
+          initialDate: now.subtract(const Duration(days: 30)),
+          firstDate: DateTime(2020),
+          lastDate: now,
+        );
+        if (!mounted || start == null) return;
+        final end = await showDatePicker(
+          context: context,
+          initialDate: now.isAfter(start) ? now : start,
+          firstDate: start,
+          lastDate: DateTime(2030),
+        );
+        if (!mounted || end == null) return;
+        rangeStart = start;
+        rangeEnd = end;
+      } else {
+        rangeStart = null;
+        rangeEnd = null;
+      }
+
+      List<TransactionModel> toExport = txs;
+      if (rangeStart != null && rangeEnd != null) {
+        final startDay = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+        final endDay = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+        toExport = txs.where((t) {
+          final d = DateTime(t.date.year, t.date.month, t.date.day);
+          return !d.isBefore(startDay) && !d.isAfter(endDay);
+        }).toList();
+        if (toExport.isEmpty) {
+          await showAppFeedbackDialog(
+            context,
+            title: 'No data in range',
+            message: 'No transactions fall within the selected date range.',
+            type: AppFeedbackType.error,
+          );
+          return;
+        }
+      }
+
+      final result = await CsvExport.exportTransactions(toExport);
       if (!mounted) return;
       await showAppFeedbackDialog(
         context,

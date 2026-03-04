@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../data/transaction_repository.dart';
 import '../core/auth/auth_provider.dart';
+import '../core/storage/secure_storage.dart';
 import 'app_feedback_dialog.dart';
+
+const _kLastTxTypeKey = 'last_tx_type';
+const _kLastTxCategoryKey = 'last_tx_category';
 
 class AddTransactionModal extends StatefulWidget {
   final TransactionModel? existing;
@@ -16,9 +20,10 @@ class AddTransactionModal extends StatefulWidget {
 }
 
 class _AddTransactionModalState extends State<AddTransactionModal> {
-  late TxType type;
-  late String category;
+  TxType type = TxType.expense;
+  String category = "Misc";
   DateTime date = DateTime.now();
+  bool _initialized = false;
 
   final amountCtrl = TextEditingController();
   final descriptionCtrl = TextEditingController();
@@ -37,18 +42,34 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   @override
   void initState() {
     super.initState();
-
     final e = widget.existing;
-    type = e?.type ?? TxType.expense;
-    category =
-        e?.category ??
-        (type == TxType.income ? incomeCats.first : expenseCats.first);
-    date = e?.date ?? DateTime.now();
-
     if (e != null) {
+      type = e.type;
+      category = e.category;
+      date = e.date;
       amountCtrl.text = e.amount.toStringAsFixed(2);
       descriptionCtrl.text = e.description ?? '';
+      _initialized = true;
+      return;
     }
+    unawaited(_loadLastUsed());
+  }
+
+  static void unawaited(Future<void> f) => f;
+
+  Future<void> _loadLastUsed() async {
+    final lastType = await SecureStorage.readString(_kLastTxTypeKey);
+    final lastCategory = await SecureStorage.readString(_kLastTxCategoryKey);
+    if (!mounted) return;
+    setState(() {
+      if (lastType == 'income' || lastType == 'expense') {
+        type = lastType == 'income' ? TxType.income : TxType.expense;
+      }
+      if (lastCategory != null && lastCategory.isNotEmpty) {
+        category = lastCategory;
+      }
+      _initialized = true;
+    });
   }
 
   @override
@@ -231,6 +252,11 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
           ? null
           : descriptionCtrl.text.trim(),
     );
+
+    if (widget.existing == null) {
+      await SecureStorage.writeString(_kLastTxTypeKey, type == TxType.income ? 'income' : 'expense');
+      await SecureStorage.writeString(_kLastTxCategoryKey, category);
+    }
 
     try {
       if (widget.existing == null) {

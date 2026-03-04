@@ -10,6 +10,7 @@ import '../models/staged_transaction_draft.dart';
 import '../utils/date_utils.dart';
 import '../widgets/add_transaction_modal.dart';
 import '../widgets/app_feedback_dialog.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/summary_card.dart';
 import '../data/transaction_repository.dart';
 import '../data/staged_draft_repository.dart';
@@ -362,11 +363,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.add_rounded),
             label: const Text("Add"),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: ListView(
-              children: [
-                SummaryCard(
+          body: RefreshIndicator(
+            onRefresh: () => TransactionRepository.loadInitial(forceRefresh: true),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListView(
+                children: [
+                  if (txs.isEmpty) ...[
+                    const SizedBox(height: 24),
+                    EmptyState(
+                      icon: Icons.account_balance_wallet_rounded,
+                      title: 'No transactions yet',
+                      message:
+                          'Add your first income or expense to see summaries here. You can also upload a bank PDF to import transactions.',
+                      actionLabel: 'Add transaction',
+                      onAction: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        showDragHandle: true,
+                        builder: (_) => AddTransactionModal(onSaved: () {}),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  SummaryCard(
                   title: "This Week (Net)",
                   value: formatMoney(weekNet),
                   icon: Icons.date_range_rounded,
@@ -425,30 +445,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 14),
                 Text("Recent", style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                ...txs
-                    .take(10)
-                    .map(
-                      (t) => Card(
-                        child: ListTile(
-                          title: Text(
-                            t.category,
-                            style: const TextStyle(fontWeight: FontWeight.w800),
+                if (txs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Your recent transactions will appear here.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
                           ),
-                          subtitle: Text(
-                            "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
-                          ),
-                          trailing: Text(
-                            '${t.type == TxType.income ? "+" : "-"}${currencyOption.symbol}${t.amount.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: t.type == TxType.income
-                                  ? Colors.green.shade700
-                                  : Colors.red.shade700,
+                    ),
+                  )
+                else
+                  ...txs.take(10).map(
+                        (t) => Card(
+                          child: ListTile(
+                            title: Text(
+                              t.category,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800),
+                            ),
+                            subtitle: Text(
+                              "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
+                            ),
+                            trailing: Text(
+                              '${t.type == TxType.income ? "+" : "-"}${currencyOption.symbol}${t.amount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                color: t.type == TxType.income
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
               ],
             ),
           ),
