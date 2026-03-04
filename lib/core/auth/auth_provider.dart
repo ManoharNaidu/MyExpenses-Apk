@@ -542,10 +542,12 @@ class AuthProvider extends ChangeNotifier {
         throw ApiException('Unable to identify user. Please login again.');
       }
 
-      final res = await ApiClient.post('/feedback', {
-        'user_id': userId,
-        'description': trimmedDescription,
-      });
+      final res = await ApiClient.post(
+        '/feedback',
+        {
+          'description': trimmedDescription,
+        },
+      );
 
       ApiClient.ensureSuccess(
         res,

@@ -224,7 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final inline = StagedTransactionDraft.fromUploadResponse(decoded);
     if (inline.isNotEmpty) return inline;
 
-    final listEndpoints = ['/staging-transactions'];
+    final listEndpoints = ['/staging'];
 
     for (final path in listEndpoints) {
       final res = await ApiClient.get(path);
