@@ -780,6 +780,7 @@ class _SettingsPageState extends State<SettingsPage> {
         text: (goal['monthly_limit'] ?? 0).toString(),
       );
       var alertsEnabled = (goal['alerts_enabled'] as bool?) ?? true;
+      var isSaving = false;
 
       await showDialog(
         context: context,
@@ -815,22 +816,40 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: () async {
-                  final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
-                  await TransactionRepository.updateBudgetGoal(
-                    monthlyLimit: amount,
-                    alertsEnabled: alertsEnabled,
-                  );
-                  if (!dialogContext.mounted) return;
-                  Navigator.pop(dialogContext);
-                  await showAppFeedbackDialog(
-                    context,
-                    title: 'Saved',
-                    message: 'Budget goal updated successfully.',
-                    type: AppFeedbackType.success,
-                  );
-                },
-                child: const Text('Save'),
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final amount =
+                            double.tryParse(amountCtrl.text.trim()) ?? 0;
+                        setState(() => isSaving = true);
+                        try {
+                          await TransactionRepository.updateBudgetGoal(
+                            monthlyLimit: amount,
+                            alertsEnabled: alertsEnabled,
+                          );
+                          if (!dialogContext.mounted) return;
+                          Navigator.pop(dialogContext);
+                          await showAppFeedbackDialog(
+                            context,
+                            title: 'Saved',
+                            message: 'Budget goal updated successfully.',
+                            type: AppFeedbackType.success,
+                          );
+                        } catch (e) {
+                          if (!dialogContext.mounted) return;
+                          await showAppFeedbackDialog(
+                            dialogContext,
+                            title: 'Update Failed',
+                            message: '$e',
+                            type: AppFeedbackType.error,
+                          );
+                        } finally {
+                          if (dialogContext.mounted) {
+                            setState(() => isSaving = false);
+                          }
+                        }
+                      },
+                child: Text(isSaving ? 'Saving...' : 'Save'),
               ),
             ],
           ),
@@ -948,6 +967,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final pinCtrl = TextEditingController();
     var enabled = auth.state.appLockEnabled;
     var biometric = auth.state.appLockUseBiometric;
+    var isSaving = false;
 
     await showDialog(
       context: context,
@@ -996,51 +1016,68 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () async {
-                final pin = pinCtrl.text.trim();
-                if (enabled &&
-                    pin.isEmpty &&
-                    auth.state.appLockPinHash == null) {
-                  await showAppFeedbackDialog(
-                    context,
-                    title: 'PIN required',
-                    message: 'Please set a PIN to enable app lock.',
-                    type: AppFeedbackType.error,
-                  );
-                  return;
-                }
-                if (pin.isNotEmpty && pin.length < 4) {
-                  await showAppFeedbackDialog(
-                    context,
-                    title: 'Invalid PIN',
-                    message: 'PIN must be at least 4 digits.',
-                    type: AppFeedbackType.error,
-                  );
-                  return;
-                }
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final pin = pinCtrl.text.trim();
+                      if (enabled &&
+                          pin.isEmpty &&
+                          auth.state.appLockPinHash == null) {
+                        await showAppFeedbackDialog(
+                          context,
+                          title: 'PIN required',
+                          message: 'Please set a PIN to enable app lock.',
+                          type: AppFeedbackType.error,
+                        );
+                        return;
+                      }
+                      if (pin.isNotEmpty && pin.length < 4) {
+                        await showAppFeedbackDialog(
+                          context,
+                          title: 'Invalid PIN',
+                          message: 'PIN must be at least 4 digits.',
+                          type: AppFeedbackType.error,
+                        );
+                        return;
+                      }
 
-                await AppLockService.updateSettings(
-                  auth,
-                  enabled: enabled,
-                  useBiometric: biometric,
-                  pin: pin.isEmpty ? null : pin,
-                );
+                      setState(() => isSaving = true);
+                      try {
+                        await AppLockService.updateSettings(
+                          auth,
+                          enabled: enabled,
+                          useBiometric: biometric,
+                          pin: pin.isEmpty ? null : pin,
+                        );
 
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                if (!context.mounted) return;
-                await showAppFeedbackDialog(
-                  context,
-                  title: 'Saved',
-                  message: 'App lock settings updated.',
-                  type: AppFeedbackType.success,
-                );
-              },
-              child: const Text('Save'),
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        if (!context.mounted) return;
+                        await showAppFeedbackDialog(
+                          context,
+                          title: 'Saved',
+                          message: 'App lock settings updated.',
+                          type: AppFeedbackType.success,
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        await showAppFeedbackDialog(
+                          context,
+                          title: 'Update Failed',
+                          message: '$e',
+                          type: AppFeedbackType.error,
+                        );
+                      } finally {
+                        if (dialogContext.mounted) {
+                          setState(() => isSaving = false);
+                        }
+                      }
+                    },
+              child: Text(isSaving ? 'Saving...' : 'Save'),
             ),
           ],
         ),

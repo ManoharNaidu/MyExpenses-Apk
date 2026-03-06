@@ -8,7 +8,9 @@ class AppLockService {
 
   static Future<bool> canCheckBiometrics() async {
     try {
-      return await _localAuth.canCheckBiometrics;
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final supported = await _localAuth.isDeviceSupported();
+      return canCheck && supported;
     } catch (_) {
       return false;
     }
@@ -16,7 +18,7 @@ class AppLockService {
 
   static Future<bool> authenticateWithBiometric() async {
     try {
-      final canCheck = await _localAuth.canCheckBiometrics;
+      final canCheck = await canCheckBiometrics();
       if (!canCheck) return false;
 
       return await _localAuth.authenticate(

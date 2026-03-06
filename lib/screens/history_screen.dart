@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../data/transaction_repository.dart';
 import '../models/transaction_model.dart';
 import '../widgets/add_transaction_modal.dart';
@@ -34,6 +35,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   static void unawaited(Future<void> f) => f;
+
+  String _formatMonthFilterLabel(String key) {
+    if (key == 'All') return key;
+    final parts = key.split('-');
+    if (parts.length != 2) return key;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    if (year == null || month == null) return key;
+    return DateFormat('MMM yyyy').format(DateTime(year, month, 1));
+  }
 
   Future<void> _loadCategories() async {
     await TransactionRepository.fetchCategories();
@@ -182,17 +193,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           initialValue: monthFilter,
                           items:
                               [
-                                    "All",
-                                    ...months.toList()
-                                      ..sort((a, b) => b.compareTo(a)),
-                                  ]
-                                  .map(
-                                    (v) => DropdownMenuItem(
-                                      value: v,
-                                      child: Text(v),
-                                    ),
-                                  )
-                                  .toList(),
+                                'All',
+                                ...months.toList()
+                                  ..sort((a, b) => b.compareTo(a)),
+                              ].map((v) {
+                                return DropdownMenuItem(
+                                  value: v,
+                                  child: Text(_formatMonthFilterLabel(v)),
+                                );
+                              }).toList(),
                           onChanged: (v) =>
                               setState(() => monthFilter = v ?? "All"),
                           decoration: const InputDecoration(labelText: "Month"),

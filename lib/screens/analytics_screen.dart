@@ -16,6 +16,11 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   int _selectedConcept = 0;
   int _touchedCategoryIndex = -1;
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
 
   static const _categoryColors = <String, Color>{
     'Housing': Color(0xFF26A69A),
@@ -49,6 +54,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
         final txs = snapshot.data ?? [];
+        final monthOptions = _buildMonthOptions(txs);
 
         if (txs.isEmpty) {
           return const EmptyState(
@@ -64,6 +70,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           child: Column(
             children: [
               _conceptSelector(context),
+              const SizedBox(height: 10),
+              _monthSelector(context, monthOptions),
               const SizedBox(height: 16),
               Expanded(
                 child: AnimatedSwitcher(
@@ -127,23 +135,73 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildConceptView(BuildContext context, List<TransactionModel> txs) {
+    final selectedMonth = DateTime(
+      _selectedMonth.year,
+      _selectedMonth.month,
+      1,
+    );
     switch (_selectedConcept) {
       case 0:
-        return _balanceOverviewView(context, txs);
+        return _balanceOverviewView(context, txs, selectedMonth);
       case 1:
-        return _categoryDrillDownView(context, txs);
+        return _categoryDrillDownView(context, txs, selectedMonth);
       default:
-        return _trendAnalysisView(context, txs);
+        return _trendAnalysisView(context, txs, selectedMonth);
     }
+  }
+
+  List<DateTime> _buildMonthOptions(List<TransactionModel> txs) {
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final months = <DateTime>{currentMonth};
+    for (final tx in txs) {
+      months.add(DateTime(tx.date.year, tx.date.month, 1));
+    }
+    final sorted = months.toList()..sort((a, b) => b.compareTo(a));
+    if (!sorted.any(
+      (m) => m.year == _selectedMonth.year && m.month == _selectedMonth.month,
+    )) {
+      _selectedMonth = currentMonth;
+    }
+    return sorted;
+  }
+
+  Widget _monthSelector(BuildContext context, List<DateTime> monthOptions) {
+    return DropdownButtonFormField<DateTime>(
+      initialValue: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
+      items: monthOptions
+          .map(
+            (month) => DropdownMenuItem<DateTime>(
+              value: month,
+              child: Text(DateFormat('MMMM yyyy').format(month)),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _selectedMonth = DateTime(value.year, value.month, 1);
+          _touchedCategoryIndex = -1;
+        });
+      },
+      decoration: const InputDecoration(
+        labelText: 'Month',
+        border: OutlineInputBorder(),
+      ),
+    );
   }
 
   Widget _balanceOverviewView(
     BuildContext context,
     List<TransactionModel> txs,
+    DateTime selectedMonth,
   ) {
-    final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
-    final previousMonthStart = DateTime(now.year, now.month - 1, 1);
+    final monthStart = DateTime(selectedMonth.year, selectedMonth.month, 1);
+    final monthEnd = DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
+    final previousMonthStart = DateTime(
+      selectedMonth.year,
+      selectedMonth.month - 1,
+      1,
+    );
     final previousMonthEnd = monthStart.subtract(const Duration(days: 1));
 
     double currentIncome = 0;
@@ -152,7 +210,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     double previousExpenses = 0;
 
     for (final tx in txs) {
-      if (!tx.date.isBefore(monthStart)) {
+      if (!tx.date.isBefore(monthStart) && !tx.date.isAfter(monthEnd)) {
         if (tx.type == TxType.income) {
           currentIncome += tx.amount;
         } else {
@@ -179,7 +237,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         .toDouble();
     final savingsPct = (netSavings / savingsTarget).clamp(0.0, 1.0).toDouble();
 
-    final monthBars = _buildSpendingStacksForRecentMonths(txs, months: 4);
+    final monthBars = _buildSpendingStacksForRecentMonths(
+      txs,
+      months: 4,
+      endMonth: selectedMonth,
+    );
 
     return SingleChildScrollView(
       key: const ValueKey('balance_view'),
@@ -187,7 +249,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Financial Balance',
+            'Financial Balance • ${DateFormat('MMMM yyyy').format(selectedMonth)}',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
@@ -316,11 +378,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   List<_MonthlyCategoryStack> _buildSpendingStacksForRecentMonths(
     List<TransactionModel> txs, {
     int months = 4,
+    DateTime? endMonth,
   }) {
-    final now = DateTime.now();
+    final anchor = endMonth ?? DateTime.now();
     final monthStarts = List.generate(
       months,
-      (i) => DateTime(now.year, now.month - (months - 1 - i), 1),
+      (i) => DateTime(anchor.year, anchor.month - (months - 1 - i), 1),
     );
 
     final categoryOrder = [
@@ -524,8 +587,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget _categoryDrillDownView(
     BuildContext context,
     List<TransactionModel> txs,
+    DateTime selectedMonth,
   ) {
-    final expenses = txs.where((e) => e.type == TxType.expense).toList();
+    final expenses = txs
+        .where(
+          (e) =>
+              e.type == TxType.expense &&
+              e.date.year == selectedMonth.year &&
+              e.date.month == selectedMonth.month,
+        )
+        .toList();
     final totals = <String, double>{};
 
     for (final tx in expenses) {
@@ -576,7 +647,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Detailed Spending',
+            'Detailed Spending • ${DateFormat('MMMM yyyy').format(selectedMonth)}',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
@@ -705,16 +776,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return 'Other';
   }
 
-  Widget _trendAnalysisView(BuildContext context, List<TransactionModel> txs) {
-    final now = DateTime.now();
-    final months = List.generate(12, (i) => DateTime(now.year, i + 1, 1));
-    final incomeByMonth = List<double>.filled(12, 0);
-    final expenseByMonth = List<double>.filled(12, 0);
+  Widget _trendAnalysisView(
+    BuildContext context,
+    List<TransactionModel> txs,
+    DateTime selectedMonth,
+  ) {
+    final months = List.generate(
+      6,
+      (i) => DateTime(selectedMonth.year, selectedMonth.month - (5 - i), 1),
+    );
+    final incomeByMonth = List<double>.filled(months.length, 0);
+    final expenseByMonth = List<double>.filled(months.length, 0);
+
+    final monthIndexMap = <String, int>{
+      for (int i = 0; i < months.length; i++)
+        '${months[i].year}-${months[i].month.toString().padLeft(2, '0')}': i,
+    };
 
     for (final tx in txs) {
-      if (tx.date.year != now.year) continue;
-      final idx = tx.date.month - 1;
-      if (idx < 0 || idx > 11) continue;
+      final key = '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}';
+      final idx = monthIndexMap[key];
+      if (idx == null) continue;
       if (tx.type == TxType.income) {
         incomeByMonth[idx] += tx.amount;
       } else {
@@ -723,31 +805,43 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     final netByMonth = List<double>.generate(
-      12,
+      months.length,
       (i) => (incomeByMonth[i] - expenseByMonth[i])
           .clamp(0.0, double.infinity)
           .toDouble(),
     );
 
     final incomeSpots = [
-      for (int i = 0; i < 12; i++) FlSpot(i.toDouble(), incomeByMonth[i]),
+      for (int i = 0; i < months.length; i++)
+        FlSpot(i.toDouble(), incomeByMonth[i]),
     ];
     final expenseSpots = [
-      for (int i = 0; i < 12; i++) FlSpot(i.toDouble(), expenseByMonth[i]),
+      for (int i = 0; i < months.length; i++)
+        FlSpot(i.toDouble(), expenseByMonth[i]),
     ];
     final netSpots = [
-      for (int i = 0; i < 12; i++) FlSpot(i.toDouble(), netByMonth[i]),
+      for (int i = 0; i < months.length; i++)
+        FlSpot(i.toDouble(), netByMonth[i]),
     ];
 
     final maxIncome = incomeByMonth.fold<double>(0, (a, b) => a > b ? a : b);
     final maxExpense = expenseByMonth.fold<double>(0, (a, b) => a > b ? a : b);
     final maxY = (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2 + 50;
 
-    final avgIncome = incomeByMonth.fold<double>(0, (a, b) => a + b) / 12;
-    final avgExpense = expenseByMonth.fold<double>(0, (a, b) => a + b) / 12;
+    final avgIncome =
+        incomeByMonth.fold<double>(0, (a, b) => a + b) / months.length;
+    final avgExpense =
+        expenseByMonth.fold<double>(0, (a, b) => a + b) / months.length;
+
+    final selectedMonthExpenses = txs.where(
+      (e) =>
+          e.type == TxType.expense &&
+          e.date.year == selectedMonth.year &&
+          e.date.month == selectedMonth.month,
+    );
 
     final expenseByCategory = <String, double>{};
-    for (final tx in txs.where((e) => e.type == TxType.expense)) {
+    for (final tx in selectedMonthExpenses) {
       final c = _normalizeDrillDownCategory(tx.category);
       expenseByCategory[c] = (expenseByCategory[c] ?? 0) + tx.amount;
     }
@@ -765,7 +859,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Financial Trends',
+            'Financial Trends • Last 6 months to ${DateFormat('MMM yyyy').format(selectedMonth)}',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
@@ -777,7 +871,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 child: LineChart(
                   LineChartData(
                     minX: 0,
-                    maxX: 11,
+                    maxX: (months.length - 1).toDouble(),
                     minY: 0,
                     maxY: maxY <= 0 ? 200 : maxY,
                     gridData: const FlGridData(show: true),
