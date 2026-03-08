@@ -14,7 +14,7 @@ on:
 
 env:
   FLUTTER_CHANNEL: stable
-  WORKING_DIR: my_expenses
+  WORKING_DIR: ./
 
 jobs:
   # ──────────────────────────────────────────────
