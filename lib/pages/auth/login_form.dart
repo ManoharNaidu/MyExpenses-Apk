@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/api/api_client.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
+import 'forgot_password_page.dart';
+import 'email_verification_page.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -35,6 +38,25 @@ class _LoginFormState extends State<LoginForm> {
         _emailController.text.trim(),
         _passwordController.text,
       );
+    } on ApiException catch (e) {
+      if (mounted) {
+        if (e.statusCode == 403) {
+          // Email not verified – backend already sent a new OTP
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  EmailVerificationPage(email: _emailController.text.trim()),
+            ),
+          );
+        } else {
+          await showAppFeedbackDialog(
+            context,
+            title: 'Login Failed',
+            message: '$e',
+            type: AppFeedbackType.error,
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         await showAppFeedbackDialog(
@@ -115,7 +137,28 @@ class _LoginFormState extends State<LoginForm> {
               return null;
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+
+          // Forgot Password
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                );
+              },
+              child: const Text(
+                "Forgot Password?",
+                style: TextStyle(
+                  color: AppTheme.accent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Login Button
           SizedBox(

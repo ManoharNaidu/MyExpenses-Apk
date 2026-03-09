@@ -2,6 +2,7 @@ class AuthState {
   final bool isLoading;
   final bool isLoggedIn;
   final bool isOnboarded;
+  final bool isVerified;
   final String? userId;
   final String? userEmail;
   final String? userName;
@@ -31,6 +32,7 @@ class AuthState {
     required this.isLoading,
     required this.isLoggedIn,
     required this.isOnboarded,
+    this.isVerified = false,
     this.userId,
     this.userEmail,
     this.userName,
@@ -47,6 +49,7 @@ class AuthState {
     isLoading: true,
     isLoggedIn: false,
     isOnboarded: false,
+    isVerified: false,
     userId: null,
     userEmail: null,
     userName: null,
@@ -63,6 +66,7 @@ class AuthState {
     bool? isLoading,
     bool? isLoggedIn,
     bool? isOnboarded,
+    bool? isVerified,
     String? userId,
     String? userEmail,
     String? userName,
@@ -78,6 +82,7 @@ class AuthState {
       isLoading: isLoading ?? this.isLoading,
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
       isOnboarded: isOnboarded ?? this.isOnboarded,
+      isVerified: isVerified ?? this.isVerified,
       userId: userId ?? this.userId,
       userEmail: userEmail ?? this.userEmail,
       userName: userName ?? this.userName,

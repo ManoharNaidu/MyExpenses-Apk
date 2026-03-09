@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../storage/secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -20,7 +21,8 @@ class ApiClient {
   static const String genericUnexpectedMessage =
       'Something unexpected happened. Please try again.';
 
-  static bool isSuccess(int statusCode) => statusCode >= 200 && statusCode < 300;
+  static bool isSuccess(int statusCode) =>
+      statusCode >= 200 && statusCode < 300;
 
   static String extractErrorMessage(
     http.Response response, {
@@ -72,7 +74,8 @@ class ApiClient {
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         final response = await request();
-        if (!_isRetryableStatus(response.statusCode) || attempt == maxAttempts) {
+        if (!_isRetryableStatus(response.statusCode) ||
+            attempt == maxAttempts) {
           return response;
         }
 
@@ -81,7 +84,9 @@ class ApiClient {
         );
       } on TimeoutException catch (_) {
         if (attempt == maxAttempts) rethrow;
-        debugPrint('♻️ Retrying request after timeout (attempt $attempt/$maxAttempts)');
+        debugPrint(
+          '♻️ Retrying request after timeout (attempt $attempt/$maxAttempts)',
+        );
       } catch (e) {
         if (attempt == maxAttempts) rethrow;
         debugPrint('♻️ Retrying request after network error: $e');
@@ -303,6 +308,7 @@ class ApiClient {
             fieldName,
             fileBytes,
             filename: fileName ?? "upload.pdf",
+            contentType: MediaType('application', 'pdf'),
           ),
         );
       } else {
@@ -311,6 +317,7 @@ class ApiClient {
             fieldName,
             filePath!,
             filename: fileName,
+            contentType: MediaType('application', 'pdf'),
           ),
         );
       }

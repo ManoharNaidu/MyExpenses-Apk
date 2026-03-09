@@ -125,6 +125,7 @@ class AuthProvider extends ChangeNotifier {
     bool? isLoading,
     bool? isLoggedIn,
     bool? isOnboarded,
+    bool? isVerified,
     String? userId,
     String? userEmail,
     String? userName,
@@ -140,6 +141,7 @@ class AuthProvider extends ChangeNotifier {
       isLoading: isLoading ?? _state.isLoading,
       isLoggedIn: isLoggedIn ?? _state.isLoggedIn,
       isOnboarded: isOnboarded ?? _state.isOnboarded,
+      isVerified: isVerified ?? _state.isVerified,
       userId: userId ?? _state.userId,
       userEmail: userEmail ?? _state.userEmail,
       userName: userName ?? _state.userName,
@@ -162,6 +164,7 @@ class AuthProvider extends ChangeNotifier {
 
     final payload = {
       'is_onboarded': _state.isOnboarded,
+      'is_verified': _state.isVerified,
       'id': _state.userId,
       'email': _state.userEmail,
       'name': _state.userName,
@@ -195,6 +198,7 @@ class AuthProvider extends ChangeNotifier {
         isLoading: false,
         isLoggedIn: true,
         isOnboarded: data['is_onboarded'] ?? false,
+        isVerified: data['is_verified'] ?? true,
         userId: data['id']?.toString(),
         userEmail: data['email']?.toString(),
         userName: data['name']?.toString(),
@@ -240,6 +244,7 @@ class AuthProvider extends ChangeNotifier {
         isLoading: false,
         isLoggedIn: true,
         isOnboarded: data["is_onboarded"] ?? false,
+        isVerified: data["is_verified"] ?? true,
         userId: data["id"]?.toString(),
         userEmail: data["email"],
         userName: data["name"],
@@ -343,17 +348,8 @@ class AuthProvider extends ChangeNotifier {
       }, requiresAuth: false);
 
       ApiClient.ensureSuccess(res, fallbackMessage: 'Registration failed');
-
-      if (res.body.isNotEmpty) {
-        final data = jsonDecode(res.body);
-        if (data["access_token"] != null) {
-          await SecureStorage.saveToken(data["access_token"]);
-          await loadSession();
-          return;
-        }
-      }
-
-      throw ApiException(ApiClient.genericUnexpectedMessage);
+      // Backend returns a message; no token yet.
+      // Caller should navigate to the email verification page.
     } catch (e) {
       debugPrint("Registration error: $e");
       rethrow;
@@ -583,6 +579,87 @@ class AuthProvider extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('❌ Error submitting feedback: $e');
+      rethrow;
+    }
+  }
+
+  // ─── Email Verification ───────────────────────────────────
+
+  Future<void> sendVerificationCode({String? email}) async {
+    try {
+      final targetEmail = email ?? _state.userEmail;
+      if (targetEmail == null || targetEmail.isEmpty) {
+        throw ApiException('No email address available');
+      }
+
+      final res = await ApiClient.post('/auth/resend-verification', {
+        'email': targetEmail,
+      }, requiresAuth: false);
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to send verification code',
+      );
+    } catch (e) {
+      debugPrint('❌ Error sending verification code: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> verifyEmail(String email, String otp) async {
+    try {
+      final res = await ApiClient.post('/auth/verify-email', {
+        'email': email,
+        'otp': otp,
+      }, requiresAuth: false);
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Verification failed');
+
+      if (res.body.isNotEmpty) {
+        final data = jsonDecode(res.body);
+        if (data["access_token"] != null) {
+          await SecureStorage.saveToken(data["access_token"]);
+          await loadSession();
+          return;
+        }
+      }
+
+      throw ApiException(ApiClient.genericUnexpectedMessage);
+    } catch (e) {
+      debugPrint('❌ Error verifying email: $e');
+      rethrow;
+    }
+  }
+
+  // ─── Password Reset ──────────────────────────────────────
+
+  Future<void> forgotPassword(String email) async {
+    try {
+      final res = await ApiClient.post('/auth/forgot-password', {
+        'email': email,
+      }, requiresAuth: false);
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to send reset code',
+      );
+    } catch (e) {
+      debugPrint('❌ Error sending reset code: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final res = await ApiClient.post('/auth/reset-password', {
+        'email': email,
+        'otp': otp,
+        'new_password': newPassword,
+      }, requiresAuth: false);
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Password reset failed');
+    } catch (e) {
+      debugPrint('❌ Error resetting password: $e');
       rethrow;
     }
   }

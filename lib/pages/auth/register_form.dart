@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
+import 'email_verification_page.dart';
 
 class RegisterForm extends StatefulWidget {
   const RegisterForm({super.key});
@@ -33,11 +34,20 @@ class _RegisterFormState extends State<RegisterForm> {
     setState(() => _isLoading = true);
 
     try {
+      final email = _emailController.text.trim();
       await context.read<AuthProvider>().register(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
+        email: email,
         password: _passwordController.text,
       );
+      if (mounted) {
+        // Registration succeeded – navigate to verification page
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EmailVerificationPage(email: email),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         await showAppFeedbackDialog(
