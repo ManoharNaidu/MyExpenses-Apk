@@ -13,8 +13,16 @@ import 'app/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
-  await dotenv.load(fileName: ".env");
+  // Load .env only in debug builds — release builds use --dart-define for API_URL.
+  // This also prevents a crash when .env is not bundled in release APKs.
+  if (kDebugMode) {
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      // .env not found — fine in release / CI builds
+    }
+  }
+
   runApp(const MyExpensesApp());
   unawaited(NotificationService.initialize());
 }

@@ -4,17 +4,24 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "my_expenses/**"
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
       - ".github/workflows/flutter_ci.yml"
   pull_request:
     branches: [main, develop]
     paths:
-      - "my_expenses/**"
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
       - ".github/workflows/flutter_ci.yml"
 
 env:
   FLUTTER_CHANNEL: stable
-  WORKING_DIR: ./
 
 jobs:
   # ──────────────────────────────────────────────
@@ -23,9 +30,6 @@ jobs:
   analyze:
     name: Static Analysis
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIR }}
 
     steps:
       - uses: actions/checkout@v4
@@ -42,12 +46,9 @@ jobs:
         with:
           path: |
             ~/.pub-cache
-            ${{ env.WORKING_DIR }}/.dart_tool
-          key: pub-${{ runner.os }}-${{ hashFiles('my_expenses/pubspec.lock') }}
+            .dart_tool
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
-
-      - name: Write .env
-        run: echo "API_URL=${{ secrets.API_URL }}" > .env
 
       - name: Install dependencies
         run: flutter pub get
@@ -62,9 +63,6 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     needs: analyze
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIR }}
 
     steps:
       - uses: actions/checkout@v4
@@ -81,12 +79,9 @@ jobs:
         with:
           path: |
             ~/.pub-cache
-            ${{ env.WORKING_DIR }}/.dart_tool
-          key: pub-${{ runner.os }}-${{ hashFiles('my_expenses/pubspec.lock') }}
+            .dart_tool
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
-
-      - name: Write .env
-        run: echo "API_URL=${{ secrets.API_URL }}" > .env
 
       - name: Install dependencies
         run: flutter pub get
@@ -120,9 +115,6 @@ jobs:
     name: Build Release APK
     runs-on: ubuntu-latest
     needs: test
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIR }}
 
     steps:
       - uses: actions/checkout@v4
@@ -145,8 +137,8 @@ jobs:
         with:
           path: |
             ~/.pub-cache
-            ${{ env.WORKING_DIR }}/.dart_tool
-          key: pub-${{ runner.os }}-${{ hashFiles('my_expenses/pubspec.lock') }}
+            .dart_tool
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
 
       - name: Cache Gradle
@@ -155,11 +147,8 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('my_expenses/android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
-
-      - name: Write .env
-        run: echo "API_URL=${{ secrets.API_URL }}" > .env
 
       - name: Install dependencies
         run: flutter pub get
@@ -169,19 +158,19 @@ jobs:
           flutter build apk \
             --release \
             --obfuscate \
-            --split-debug-info=build/debug-info
+            --split-debug-info=build/debug-info \
+            --dart-define=API_URL=${{ secrets.API_URL }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: my-expenses-apk-${{ github.sha }}
-          path: my_expenses/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
 
       - name: Upload debug symbols
         uses: actions/upload-artifact@v4
         with:
           name: debug-symbols-${{ github.sha }}
-          path: my_expenses/build/debug-info/
+          path: build/debug-info/
           retention-days: 14
-

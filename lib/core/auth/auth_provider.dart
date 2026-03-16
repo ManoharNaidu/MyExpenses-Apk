@@ -14,6 +14,14 @@ class AuthProvider extends ChangeNotifier {
   AuthState _state = AuthState.initial();
   AuthState get state => _state;
 
+  AuthProvider() {
+    // Register global 401 handler so any expired/revoked token anywhere
+    // in the app automatically clears the session and routes to login.
+    ApiClient.setUnauthorizedCallback(() async {
+      await logout();
+    });
+  }
+
   List<String> _toStringList(dynamic raw) {
     if (raw is List) {
       return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();

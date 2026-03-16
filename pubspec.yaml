@@ -82,8 +82,11 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - .env
     - assets/icon/
+  # NOTE: .env is intentionally NOT listed here.
+  # API_URL is injected at build time via --dart-define=API_URL=https://...
+  # or flutter_dotenv loads it from .env in DEBUG builds only.
+  # See lib/core/api/api_client.dart for usage.
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
