@@ -28,8 +28,17 @@ class ApiClient {
   static String get _baseUrl {
     const defined = String.fromEnvironment('API_URL');
     if (defined.isNotEmpty) return defined;
-    return dotenv.env['API_URL'] ?? '';
+    // Guard against NotInitializedError: dotenv may not be loaded in
+    // release builds or unit-test contexts where .env is absent.
+    try {
+      return dotenv.env['API_URL'] ?? '';
+    } catch (_) {
+      // dotenv never initialised — return empty so callers get a clear
+      // network error rather than an unhandled crash.
+      return '';
+    }
   }
+
   static const String genericUnexpectedMessage =
       'Something unexpected happened. Please try again.';
 
