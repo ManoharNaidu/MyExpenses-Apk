@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../core/auth/auth_provider.dart';
+import '../core/constants/currencies.dart';
 import '../data/transaction_repository.dart';
 import '../models/transaction_model.dart';
 import '../widgets/empty_state.dart';
@@ -38,6 +41,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   void initState() {
     super.initState();
     TransactionRepository.ensureInitialized();
+  }
+
+  /// Returns a short currency symbol for chart labels (e.g. "$", "₹", "€").
+  String _currencySymbol(BuildContext context) {
+    final code =
+        context.read<AuthProvider>().state.effectiveCurrency;
+    return currencyFromCode(code).symbol;
   }
 
   @override
@@ -167,7 +177,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _monthSelector(BuildContext context, List<DateTime> monthOptions) {
     return DropdownButtonFormField<DateTime>(
-      initialValue: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
+      value: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
       items: monthOptions
           .map(
             (month) => DropdownMenuItem<DateTime>(
@@ -195,13 +205,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     List<TransactionModel> txs,
     DateTime selectedMonth,
   ) {
+    final sym = _currencySymbol(context);
+
     final monthStart = DateTime(selectedMonth.year, selectedMonth.month, 1);
-    final monthEnd = DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
-    final previousMonthStart = DateTime(
-      selectedMonth.year,
-      selectedMonth.month - 1,
-      1,
-    );
+    final monthEnd =
+        DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
+    final previousMonthStart =
+        DateTime(selectedMonth.year, selectedMonth.month - 1, 1);
     final previousMonthEnd = monthStart.subtract(const Duration(days: 1));
 
     double currentIncome = 0;
@@ -228,14 +238,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final gaugeMax =
         (currentIncome > currentExpenses ? currentIncome : currentExpenses) *
-            1.15 +
-        1;
+                1.15 +
+            1;
 
-    final savingsTarget = currentIncome <= 0 ? 1000.0 : currentIncome * 0.25;
+    final savingsTarget =
+        currentIncome <= 0 ? 1000.0 : currentIncome * 0.25;
     final netSavings = (currentIncome - currentExpenses)
         .clamp(0, double.infinity)
         .toDouble();
-    final savingsPct = (netSavings / savingsTarget).clamp(0.0, 1.0).toDouble();
+    final savingsPct =
+        (netSavings / savingsTarget).clamp(0.0, 1.0).toDouble();
 
     final monthBars = _buildSpendingStacksForRecentMonths(
       txs,
@@ -260,6 +272,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   title: 'Income',
                   value: currentIncome,
                   max: gaugeMax,
+                  symbol: sym,
                   color: const Color(0xFF2E7D32),
                   isPositiveTrend: currentIncome >= previousIncome,
                 ),
@@ -270,6 +283,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   title: 'Expenses',
                   value: currentExpenses,
                   max: gaugeMax,
+                  symbol: sym,
                   color: const Color(0xFFF9A825),
                   gradient: const LinearGradient(
                     colors: [Color(0xFFFFEE58), Color(0xFFFF7043)],
@@ -286,6 +300,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             current: netSavings,
             target: savingsTarget,
             progress: savingsPct,
+            symbol: sym,
           ),
           const SizedBox(height: 12),
         ],
@@ -297,6 +312,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     required String title,
     required double value,
     required double max,
+    required String symbol,
     required Color color,
     LinearGradient? gradient,
     required bool isPositiveTrend,
@@ -322,7 +338,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 10,
-                      backgroundColor: Colors.black.withValues(alpha: 0.08),
+                      backgroundColor:
+                          Colors.black.withValues(alpha: 0.08),
                       valueColor: AlwaysStoppedAnimation<Color>(color),
                     ),
                   ),
@@ -331,7 +348,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       height: 86,
                       width: 86,
                       child: ShaderMask(
-                        shaderCallback: (rect) => gradient.createShader(rect),
+                        shaderCallback: (rect) =>
+                            gradient.createShader(rect),
                         child: CircularProgressIndicator(
                           value: progress,
                           strokeWidth: 10,
@@ -343,7 +361,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                     ),
                   Text(
-                    '\$${value.toStringAsFixed(0)}',
+                    '$symbol${value.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -355,7 +373,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Row(
               children: [
                 Icon(
-                  isPositiveTrend ? Icons.arrow_upward : Icons.arrow_downward,
+                  isPositiveTrend
+                      ? Icons.arrow_upward
+                      : Icons.arrow_downward,
                   size: 16,
                   color: isPositiveTrend ? Colors.green : Colors.red,
                 ),
@@ -397,12 +417,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final stacks = <_MonthlyCategoryStack>[];
     for (final monthStart in monthStarts) {
-      final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 0);
-      final values = <String, double>{for (final c in categoryOrder) c: 0};
+      final monthEnd =
+          DateTime(monthStart.year, monthStart.month + 1, 0);
+      final values = <String, double>{
+        for (final c in categoryOrder) c: 0,
+      };
 
       for (final tx in txs) {
         if (tx.type != TxType.expense) continue;
-        if (tx.date.isBefore(monthStart) || tx.date.isAfter(monthEnd)) continue;
+        if (tx.date.isBefore(monthStart) || tx.date.isAfter(monthEnd)) {
+          continue;
+        }
         final normalized = _normalizeSpendingCategory(tx.category);
         values[normalized] = (values[normalized] ?? 0) + tx.amount;
       }
@@ -423,6 +448,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (value.contains('grocer') || value.contains('food')) return 'Groceries';
     if (value.contains('transport') ||
         value.contains('fuel') ||
+        value.contains('petrol') ||
         value.contains('taxi')) {
       return 'Transport';
     }
@@ -440,7 +466,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     List<_MonthlyCategoryStack> bars,
   ) {
     final maxTotal = bars
-        .map((e) => e.categoryValues.values.fold<double>(0, (a, b) => a + b))
+        .map((e) =>
+            e.categoryValues.values.fold<double>(0, (a, b) => a + b))
         .fold<double>(0, (a, b) => a > b ? a : b);
 
     final groups = <BarChartGroupData>[];
@@ -554,6 +581,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     required double current,
     required double target,
     required double progress,
+    required String symbol,
   }) {
     return Card(
       child: Padding(
@@ -573,7 +601,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '\$${current.toStringAsFixed(0)} to \$${target.toStringAsFixed(0)}',
+              '$symbol${current.toStringAsFixed(0)} to $symbol${target.toStringAsFixed(0)}',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 3),
@@ -589,6 +617,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     List<TransactionModel> txs,
     DateTime selectedMonth,
   ) {
+    final sym = _currencySymbol(context);
+
     final expenses = txs
         .where(
           (e) =>
@@ -618,19 +648,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final selectedCategory =
         _touchedCategoryIndex >= 0 && _touchedCategoryIndex < top.length
-        ? top[_touchedCategoryIndex].key
-        : null;
+            ? top[_touchedCategoryIndex].key
+            : null;
 
-    final selectedTxs =
-        selectedCategory == null
-              ? <TransactionModel>[]
-              : expenses
-                    .where(
-                      (t) =>
-                          _normalizeDrillDownCategory(t.category) ==
-                          selectedCategory,
-                    )
-                    .toList()
+    final selectedTxs = selectedCategory == null
+        ? <TransactionModel>[]
+        : expenses
+              .where(
+                (t) =>
+                    _normalizeDrillDownCategory(t.category) ==
+                    selectedCategory,
+              )
+              .toList()
           ..sort((a, b) => b.date.compareTo(a.date));
 
     final highest = selectedTxs.isEmpty
@@ -669,10 +698,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         centerSpaceRadius: 45,
                         pieTouchData: PieTouchData(
                           touchCallback: (event, response) {
-                            final index =
-                                response?.touchedSection?.touchedSectionIndex;
+                            final index = response
+                                ?.touchedSection?.touchedSectionIndex;
                             if (index != null) {
-                              setState(() => _touchedCategoryIndex = index);
+                              setState(
+                                  () => _touchedCategoryIndex = index);
                             }
                           },
                         ),
@@ -684,9 +714,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   ? top[i].key
                                   : '${top[i].key}\n${(top[i].value / totalAmount * 100).toStringAsFixed(0)}%',
                               radius: _touchedCategoryIndex == i ? 78 : 68,
-                              color:
-                                  _categoryColors[top[i].key] ??
-                                  Colors.primaries[i % Colors.primaries.length],
+                              color: _categoryColors[top[i].key] ??
+                                  Colors.primaries[
+                                      i % Colors.primaries.length],
                               titleStyle: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -728,7 +758,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       rows: selectedTxs.take(7).map((tx) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(DateFormat('MMM d').format(tx.date))),
+                            DataCell(
+                                Text(DateFormat('MMM d').format(tx.date))),
                             DataCell(
                               Text(
                                 tx.notes ?? tx.description ?? '-',
@@ -736,7 +767,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            DataCell(Text('\$${tx.amount.toStringAsFixed(2)}')),
+                            DataCell(Text(
+                                '$sym${tx.amount.toStringAsFixed(2)}')),
                             const DataCell(Text('-')),
                           ],
                         );
@@ -748,8 +780,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     highest == null
                         ? 'No transactions available for this category yet.'
                         : 'Highest $selectedCategory spending: ${DateFormat('MMM d').format(highest.date)} - '
-                              '\$${highest.amount.toStringAsFixed(0)}. '
-                              'Average transaction: \$${avg.toStringAsFixed(0)}.',
+                              '$sym${highest.amount.toStringAsFixed(0)}. '
+                              'Average transaction: $sym${avg.toStringAsFixed(0)}.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -770,7 +802,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
     if (v.contains('shop')) return 'Shopping';
     if (v.contains('entertain')) return 'Entertainment';
-    if (v.contains('transport') || v.contains('fuel') || v.contains('taxi')) {
+    if (v.contains('transport') ||
+        v.contains('fuel') ||
+        v.contains('petrol') ||
+        v.contains('taxi')) {
       return 'Transport';
     }
     return 'Other';
@@ -781,9 +816,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     List<TransactionModel> txs,
     DateTime selectedMonth,
   ) {
+    final sym = _currencySymbol(context);
+
     final months = List.generate(
       6,
-      (i) => DateTime(selectedMonth.year, selectedMonth.month - (5 - i), 1),
+      (i) =>
+          DateTime(selectedMonth.year, selectedMonth.month - (5 - i), 1),
     );
     final incomeByMonth = List<double>.filled(months.length, 0);
     final expenseByMonth = List<double>.filled(months.length, 0);
@@ -794,7 +832,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     };
 
     for (final tx in txs) {
-      final key = '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}';
+      final key =
+          '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}';
       final idx = monthIndexMap[key];
       if (idx == null) continue;
       if (tx.type == TxType.income) {
@@ -824,9 +863,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         FlSpot(i.toDouble(), netByMonth[i]),
     ];
 
-    final maxIncome = incomeByMonth.fold<double>(0, (a, b) => a > b ? a : b);
-    final maxExpense = expenseByMonth.fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2 + 50;
+    final maxIncome =
+        incomeByMonth.fold<double>(0, (a, b) => a > b ? a : b);
+    final maxExpense =
+        expenseByMonth.fold<double>(0, (a, b) => a > b ? a : b);
+    final maxY =
+        (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2 + 50;
 
     final avgIncome =
         incomeByMonth.fold<double>(0, (a, b) => a + b) / months.length;
@@ -847,11 +889,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
     final topCategories = expenseByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final totalExpense = topCategories.fold<double>(
-      0,
-      (sum, e) => sum + e.value,
-    );
-    final topExpense = topCategories.isEmpty ? 'N/A' : topCategories.first.key;
+    final totalExpense =
+        topCategories.fold<double>(0, (sum, e) => sum + e.value);
+    final topExpense =
+        topCategories.isEmpty ? 'N/A' : topCategories.first.key;
 
     return SingleChildScrollView(
       key: const ValueKey('trend_view'),
@@ -949,12 +990,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Avg. Monthly Income: \$${avgIncome.toStringAsFixed(0)}',
-                  ),
+                      'Avg. Monthly Income: $sym${avgIncome.toStringAsFixed(0)}'),
                   const SizedBox(height: 4),
                   Text(
-                    'Avg. Monthly Expenses: \$${avgExpense.toStringAsFixed(0)}',
-                  ),
+                      'Avg. Monthly Expenses: $sym${avgExpense.toStringAsFixed(0)}'),
                   const SizedBox(height: 4),
                   Text('Top Expense: $topExpense'),
                 ],
@@ -994,7 +1033,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   : e.value / totalExpense,
                               minHeight: 9,
                               borderRadius: BorderRadius.circular(8),
-                              color: _categoryColors[e.key] ?? Colors.blueGrey,
+                              color: _categoryColors[e.key] ??
+                                  Colors.blueGrey,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1002,7 +1042,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             totalExpense <= 0
                                 ? '0%'
                                 : '${(e.value / totalExpense * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -1019,6 +1060,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _legendItem(String label, Color color) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 12,

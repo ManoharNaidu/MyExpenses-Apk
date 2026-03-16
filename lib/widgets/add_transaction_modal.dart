@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../data/transaction_repository.dart';
 import '../core/auth/auth_provider.dart';
+import '../core/constants/categories.dart';
 import '../core/storage/secure_storage.dart';
 import 'app_feedback_dialog.dart';
 
@@ -21,23 +22,12 @@ class AddTransactionModal extends StatefulWidget {
 
 class _AddTransactionModalState extends State<AddTransactionModal> {
   TxType type = TxType.expense;
-  String category = "Misc";
+  String category = '';
   DateTime date = DateTime.now();
   bool repeatMonthly = false;
 
   final amountCtrl = TextEditingController();
   final descriptionCtrl = TextEditingController();
-
-  final incomeCats = const ["Transfer", "Job", "Deposit"];
-  final expenseCats = const [
-    "RoomRent",
-    "Scooty Rent",
-    "PAC",
-    "Groceries",
-    "Petrol",
-    "Food",
-    "Misc",
-  ];
 
   @override
   void initState() {
@@ -81,15 +71,20 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthProvider>().state;
-    final selectedUserCats = authState.effectiveExpenseCategories;
+    final selectedUserExpenseCats = authState.effectiveExpenseCategories;
     final selectedIncomeCats = authState.effectiveIncomeCategories;
-    final expenseOptions = selectedUserCats.isNotEmpty
-        ? selectedUserCats
-        : expenseCats;
+
+    // Fallback to predefined constants if user hasn't configured categories yet
+    final expenseOptions = selectedUserExpenseCats.isNotEmpty
+        ? selectedUserExpenseCats
+        : predefinedExpenseCategories;
     final incomeOptions = selectedIncomeCats.isNotEmpty
         ? selectedIncomeCats
-        : incomeCats;
+        : predefinedIncomeCategories;
+
     final cats = type == TxType.income ? incomeOptions : expenseOptions;
+
+    // Ensure selected category is valid for current type
     final selectedCategory = cats.contains(category) ? category : cats.first;
     category = selectedCategory;
 
@@ -105,31 +100,31 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.existing == null ? "Add Transaction" : "Edit Transaction",
+              widget.existing == null ? 'Add Transaction' : 'Edit Transaction',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
 
-            // amount
+            // Amount
             TextField(
               controller: amountCtrl,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
               decoration: const InputDecoration(
-                hintText: "0.00",
+                hintText: '0.00',
                 border: InputBorder.none,
               ),
             ),
 
             const SizedBox(height: 8),
 
-            // type toggle
+            // Type toggle
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _pill(
-                  label: "Income",
+                  label: 'Income',
                   selected: type == TxType.income,
                   onTap: () => setState(() {
                     type = TxType.income;
@@ -138,7 +133,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 ),
                 const SizedBox(width: 10),
                 _pill(
-                  label: "Expense",
+                  label: 'Expense',
                   selected: type == TxType.expense,
                   onTap: () => setState(() {
                     type = TxType.expense;
@@ -150,28 +145,28 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             const SizedBox(height: 14),
 
-            // category dropdown
+            // Category dropdown
             DropdownButtonFormField<String>(
-              initialValue: selectedCategory,
+              value: selectedCategory,
               items: cats
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
               onChanged: (v) => setState(() => category = v ?? category),
-              decoration: const InputDecoration(labelText: "Category"),
+              decoration: const InputDecoration(labelText: 'Category'),
             ),
 
             const SizedBox(height: 10),
 
-            // date picker
+            // Date picker
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text("Date"),
-              subtitle: Text("${date.day}/${date.month}/${date.year}"),
+              title: const Text('Date'),
+              subtitle: Text('${date.day}/${date.month}/${date.year}'),
               trailing: const Icon(Icons.calendar_month_rounded),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
-                  firstDate: DateTime(2024, 1, 1),
+                  firstDate: DateTime(2020),
                   lastDate: DateTime(2035, 12, 31),
                   initialDate: date,
                 );
@@ -181,10 +176,11 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             const SizedBox(height: 10),
 
-            // description
+            // Description
             TextField(
               controller: descriptionCtrl,
-              decoration: const InputDecoration(labelText: "Notes (optional)"),
+              decoration:
+                  const InputDecoration(labelText: 'Notes (optional)'),
             ),
 
             const SizedBox(height: 8),
@@ -201,7 +197,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             const SizedBox(height: 16),
 
-            FilledButton(onPressed: _save, child: const Text("Save")),
+            FilledButton(onPressed: _save, child: const Text('Save')),
             const SizedBox(height: 10),
           ],
         ),
@@ -243,7 +239,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       await showAppFeedbackDialog(
         context,
         title: 'Invalid Amount',
-        message: 'Please enter a valid amount.',
+        message: 'Please enter a valid amount greater than zero.',
         type: AppFeedbackType.error,
       );
       return;
@@ -257,12 +253,10 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       type: type,
       category: category,
       amount: amount,
-      description: descriptionCtrl.text.trim().isEmpty
-          ? null
-          : descriptionCtrl.text.trim(),
-      notes: descriptionCtrl.text.trim().isEmpty
-          ? null
-          : descriptionCtrl.text.trim(),
+      description:
+          descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
+      notes:
+          descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
       repeatMonthly: repeatMonthly,
     );
 
