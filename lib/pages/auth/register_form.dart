@@ -83,7 +83,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: AppTheme.white,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -109,7 +109,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: AppTheme.white,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -146,7 +146,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: AppTheme.white,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -163,8 +163,8 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleRegister,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.sandBeige,
+                foregroundColor: AppTheme.coffeeDark,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -176,7 +176,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.coffeeDark),
                       ),
                     )
                   : const Text(

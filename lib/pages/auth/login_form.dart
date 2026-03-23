@@ -92,7 +92,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: AppTheme.white,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -128,7 +128,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: AppTheme.white,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -151,7 +151,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               child: const Text(
                 "Forgot Password?",
                 style: TextStyle(
-                  color: AppTheme.accent,
+                  color: AppTheme.sandBeige,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -166,8 +166,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.sandBeige,
+                foregroundColor: AppTheme.coffeeDark,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -179,7 +179,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.coffeeDark),
                       ),
                     )
                   : const Text(

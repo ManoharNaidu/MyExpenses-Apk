@@ -14,6 +14,7 @@ import '../../utils/csv_export.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import '../../widgets/add_transaction_modal.dart';
 import '../../core/api/pdf_upload_provider.dart';
+import '../../app/theme.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
@@ -488,7 +489,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                     children: [
                       Icon(
                         Icons.currency_exchange_rounded,
-                        color: theme.colorScheme.primary,
+                        color: AppTheme.coffeeDark,
                         size: 20,
                       ),
                       const SizedBox(width: 6),
@@ -498,6 +499,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w800,
+                            color: AppTheme.coffeeDark,
                           ),
                         ),
                       ),
@@ -580,6 +582,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         child: const Icon(Icons.add_rounded, size: 32),
       ),
       bottomNavigationBar: BottomAppBar(
+        color: AppTheme.sandCream,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -634,7 +637,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           children: [
             Icon(
               icon,
-              color: isSelected ? theme.colorScheme.primary : Colors.grey,
+              color: isSelected ? AppTheme.coffeeDark : AppTheme.earthSoft,
               size: 24,
             ),
             const SizedBox(height: 2),
@@ -643,7 +646,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                color: isSelected ? theme.colorScheme.primary : Colors.grey,
+                color: isSelected ? AppTheme.coffeeDark : AppTheme.earthSoft,
               ),
             ),
           ],
@@ -656,7 +659,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.sandCream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),

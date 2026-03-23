@@ -36,20 +36,24 @@ class TransactionTile extends StatelessWidget {
                 onPressed: onDelete,
               )
             : CircleAvatar(
-                backgroundColor: (isIncome ? Colors.green : Colors.red)
+                backgroundColor: (isIncome
+                        ? const Color(0xFF2D6A4F)
+                        : const Color(0xFFBC4749))
                     .withValues(alpha: 0.12),
                 child: Icon(
                   isIncome
                       ? Icons.arrow_downward_rounded
                       : Icons.arrow_upward_rounded,
-                  color: isIncome ? Colors.green : Colors.red,
+                  color: isIncome
+                      ? const Color(0xFF2D6A4F)
+                      : const Color(0xFFBC4749),
                 ),
               ),
         title: Text(
           tx.category,
           style: const TextStyle(
             fontWeight: FontWeight.w800,
-            color: AppTheme.textDark,
+            color: AppTheme.coffeeDark,
           ),
         ),
         subtitle: Text(
@@ -59,7 +63,9 @@ class TransactionTile extends StatelessWidget {
           amt,
           style: TextStyle(
             fontWeight: FontWeight.w900,
-            color: isIncome ? Colors.green.shade700 : Colors.red.shade700,
+            color: isIncome
+                ? const Color(0xFF2D6A4F)
+                : const Color(0xFFBC4749),
           ),
         ),
         onTap: onEdit,

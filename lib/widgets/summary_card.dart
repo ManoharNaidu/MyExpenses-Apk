@@ -24,10 +24,10 @@ class SummaryCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppTheme.accent.withValues(alpha: 0.18),
+                color: AppTheme.sandBeige.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: AppTheme.accentDark),
+              child: Icon(icon, color: AppTheme.coffeeDark.withValues(alpha: 0.7), size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(

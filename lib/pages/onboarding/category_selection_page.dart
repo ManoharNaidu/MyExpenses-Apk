@@ -66,7 +66,7 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
           "Select Categories",
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: AppTheme.textDark,
+            color: AppTheme.coffeeDark,
           ),
         ),
       ),
@@ -79,13 +79,13 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppTheme.textDark,
+                color: AppTheme.coffeeDark,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               "Pick both income and expense categories. You can add your own too.",
-              style: TextStyle(fontSize: 14, color: AppTheme.textSoft),
+              style: TextStyle(fontSize: 14, color: AppTheme.earthSoft),
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
@@ -135,9 +135,9 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
                                     : selectedIncome.remove(cat);
                               });
                             },
-                            backgroundColor: AppTheme.card,
-                            selectedColor: AppTheme.accent.withValues(alpha: 0.2),
-                            checkmarkColor: AppTheme.accentDark,
+                            backgroundColor: AppTheme.white,
+                            selectedColor: AppTheme.sandBeige.withValues(alpha: 0.2),
+                            checkmarkColor: AppTheme.coffeeDark,
                           );
                         }),
                         ...selectedIncome
@@ -196,9 +196,9 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
                                     : selectedExpense.remove(cat);
                               });
                             },
-                            backgroundColor: AppTheme.card,
-                            selectedColor: AppTheme.accent.withValues(alpha: 0.2),
-                            checkmarkColor: AppTheme.accentDark,
+                            backgroundColor: AppTheme.white,
+                            selectedColor: AppTheme.sandBeige.withValues(alpha: 0.2),
+                            checkmarkColor: AppTheme.coffeeDark,
                           );
                         }),
                         ...selectedExpense
@@ -249,7 +249,7 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.accent,
+                    color: AppTheme.sandBeige,
                   ),
                 ),
               ),
@@ -293,8 +293,8 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.sandBeige,
+                  foregroundColor: AppTheme.coffeeDark,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -332,7 +332,7 @@ class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
                   }
                 },
                 style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.textSoft,
+                  foregroundColor: AppTheme.earthSoft,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

@@ -344,14 +344,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         bool isThisWeek(TransactionModel t) =>
             !t.date.isBefore(weekStart) && !t.date.isAfter(weekEnd);
 
-        bool isThisMonth(TransactionModel t) =>
-            t.date.year == monthKey.year && t.date.month == monthKey.month;
+        final todayStart = DateTime(now.year, now.month, now.day);
+        
+        bool isToday(TransactionModel t) =>
+            t.date.year == now.year &&
+            t.date.month == now.month &&
+            t.date.day == now.day;
 
+        bool isThisMonth(TransactionModel t) =>
+            t.date.year == now.year && t.date.month == now.month;
+
+        final todayNet = sumWhere(isToday);
         final weekNet = sumWhere(isThisWeek);
         final monthNet = sumWhere(isThisMonth);
 
         final weekIncome = incomeWhere(isThisWeek);
-        final weekExpense = expenseWhere(isThisMonth);
+        final weekExpense = expenseWhere(isThisWeek);
 
         return Scaffold(
           body: RefreshIndicator(
@@ -361,7 +369,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: const EdgeInsets.all(16),
               child: ListView(
                 children: [
-                  if (txs.isEmpty) ...[
+                   if (txs.isEmpty) ...[
                     const SizedBox(height: 24),
                     EmptyState(
                       icon: Icons.account_balance_wallet_rounded,
@@ -378,26 +386,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
                     const SizedBox(height: 24),
                   ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SummaryCard(
-                          title: "This Week (Net)",
-                          value: formatMoney(weekNet),
-                          icon: Icons.date_range_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SummaryCard(
-                          title: "This Month (Net)",
-                          value: formatMoney(monthNet),
-                          icon: Icons.calendar_month_rounded,
-                        ),
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.05),
+                  // Stacked Net Summaries
+                  SummaryCard(
+                    title: "Today (Net)",
+                    value: formatMoney(todayNet),
+                    icon: Icons.calendar_today_rounded,
+                  ).animate().fadeIn(delay: 50.ms).slideY(begin: 0.05),
                   const SizedBox(height: 12),
+                  SummaryCard(
+                    title: "This Week (Net)",
+                    value: formatMoney(weekNet),
+                    icon: Icons.date_range_rounded,
+                  ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05),
+                  const SizedBox(height: 12),
+                  SummaryCard(
+                    title: "This Month (Net)",
+                    value: formatMoney(monthNet),
+                    icon: Icons.calendar_month_rounded,
+                  ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.05),
+                  const SizedBox(height: 12),
+                  // Split Income/Expense
                   Row(
                     children: [
                       Expanded(
@@ -416,7 +424,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ),
                     ],
-                  ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.05),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
