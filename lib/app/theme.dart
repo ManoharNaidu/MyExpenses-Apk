@@ -1,146 +1,135 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Sandstone Minimalist Palette
-  static const sandCream = Color(0xFFFDF8F5);
-  static const sandBeige = Color(0xFFF9DCC4);
-  static const coffeeDark = Color(0xFF413620);
-  static const earthSoft = Color(0xFF8C7D6B);
-  static const white = Color(0xFFFFFFFF);
+  // User-provided Sandstone Palette
+  static const cream = Color(0xFFF7F3EE);
+  static const card = Color(0xFFFFFFFF);
+  static const textDark = Color(0xFF3F3A36);
+  static const textSoft = Color(0xFF6E645C);
+  static const accent = Color(0xFFD9A86C);
+  static const accentDark = Color(0xFFB38B59);
+
+  // Aliases for compatibility during migration
+  static const sandCream = cream;
+  static const sandBeige = accent;
+  static const coffeeDark = textDark;
+  static const earthSoft = textSoft;
+  static const white = card;
 
   static ThemeData get theme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: sandCream,
+      scaffoldBackgroundColor: cream,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: sandBeige,
-        primary: coffeeDark,
-        secondary: sandBeige,
-        surface: white,
-        onSurface: coffeeDark,
+        seedColor: accent,
+        primary: textDark,
+        secondary: accent,
+        surface: card,
+        onSurface: textDark,
       ),
-      textTheme: GoogleFonts.interTextTheme(),
+      fontFamily: 'Roboto',
     );
 
     return base.copyWith(
-      appBarTheme: AppBarTheme(
-        backgroundColor: sandCream,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: cream,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: coffeeDark),
-        titleTextStyle: GoogleFonts.outfit(
-          color: coffeeDark,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
+        iconTheme: IconThemeData(color: textDark),
       ),
       cardTheme: CardThemeData(
-        color: white,
+        color: card,
         elevation: 0,
-        shadowColor: coffeeDark.withValues(alpha: 0.04),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: coffeeDark.withValues(alpha: 0.05), width: 1),
-        ),
+        shadowColor: Colors.black.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: sandBeige,
-        foregroundColor: coffeeDark,
+        backgroundColor: accent,
+        foregroundColor: textDark,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: sandCream,
-        indicatorColor: sandBeige,
+        backgroundColor: cream,
+        indicatorColor: accent.withValues(alpha: 0.2),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: coffeeDark);
+            return const IconThemeData(color: textDark);
           }
-          return const IconThemeData(color: earthSoft);
+          return const IconThemeData(color: textSoft);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.inter(
-              color: coffeeDark,
+            return const TextStyle(
+              color: textDark,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             );
           }
-          return GoogleFonts.inter(
-            color: earthSoft,
+          return const TextStyle(
+            color: textSoft,
             fontWeight: FontWeight.w500,
             fontSize: 12,
           );
         }),
       ),
       textTheme: base.textTheme.copyWith(
-        displayLarge: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: coffeeDark),
-        displayMedium: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: coffeeDark),
-        displaySmall: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: coffeeDark),
-        headlineLarge: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: coffeeDark),
-        headlineMedium: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: coffeeDark),
-        headlineSmall: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: coffeeDark),
-        titleLarge: GoogleFonts.outfit(
+        titleLarge: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w800,
-          color: coffeeDark,
+          color: textDark,
         ),
-        titleMedium: GoogleFonts.outfit(
+        titleMedium: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w700,
-          color: coffeeDark,
+          color: textDark,
         ),
-        bodyMedium: GoogleFonts.inter(fontSize: 14, color: earthSoft),
+        bodyMedium: const TextStyle(fontSize: 14, color: textSoft),
       ),
     );
   }
 
   static ThemeData get darkTheme {
-    // Dark variant of the Sandstone theme (Mocha/Night)
+    // Dark variant using the same accent tone
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF1A1714),
+      scaffoldBackgroundColor: const Color(0xFF1E1C1A),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: sandBeige,
+        seedColor: accent,
         brightness: Brightness.dark,
-        primary: sandBeige,
-        surface: const Color(0xFF2D2924),
+        primary: accent,
+        surface: const Color(0xFF2B2825),
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+      fontFamily: 'Roboto',
     );
 
     return base.copyWith(
-      appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF1A1714),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1E1C1A),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.outfit(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
       ),
       cardTheme: CardThemeData(
+        color: const Color(0xFF2B2825),
         elevation: 0,
-        color: const Color(0xFF2D2924),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
       textTheme: base.textTheme.copyWith(
-        titleLarge: GoogleFonts.outfit(
+        titleLarge: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w800,
           color: Colors.white,
         ),
-        titleMedium: GoogleFonts.outfit(
+        titleMedium: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
-        bodyMedium: GoogleFonts.inter(fontSize: 14, color: Colors.white70),
+        bodyMedium: const TextStyle(fontSize: 14, color: Colors.white70),
       ),
     );
   }

@@ -29,7 +29,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppTheme.sandBeige.withValues(alpha: 0.2),
+                    color: AppTheme.accent.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Padding(
@@ -48,7 +48,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.coffeeDark,
+                    color: AppTheme.textDark,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -56,7 +56,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   "Track your spending, save more",
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppTheme.earthSoft,
+                    color: AppTheme.textSoft,
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -64,7 +64,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 // Tab Selector
                 Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.white,
+                    color: AppTheme.card,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
@@ -83,7 +83,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: isLogin
-                                  ? AppTheme.sandBeige
+                                  ? AppTheme.accent
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -94,8 +94,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: isLogin
-                                    ? AppTheme.coffeeDark
-                                    : AppTheme.earthSoft,
+                                    ? AppTheme.textDark
+                                    : AppTheme.textSoft,
                               ),
                             ),
                           ),
@@ -108,7 +108,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: !isLogin
-                                  ? AppTheme.sandBeige
+                                  ? AppTheme.accent
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -119,8 +119,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: !isLogin
-                                    ? AppTheme.coffeeDark
-                                    : AppTheme.earthSoft,
+                                    ? AppTheme.textDark
+                                    : AppTheme.textSoft,
                               ),
                             ),
                           ),

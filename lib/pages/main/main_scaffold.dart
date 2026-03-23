@@ -489,7 +489,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                     children: [
                       Icon(
                         Icons.currency_exchange_rounded,
-                        color: AppTheme.coffeeDark,
+                        color: AppTheme.textDark,
                         size: 20,
                       ),
                       const SizedBox(width: 6),
@@ -499,7 +499,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: AppTheme.coffeeDark,
+                            color: AppTheme.textDark,
                           ),
                         ),
                       ),
@@ -582,7 +582,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         child: const Icon(Icons.add_rounded, size: 32),
       ),
       bottomNavigationBar: BottomAppBar(
-        color: AppTheme.sandCream,
+        color: AppTheme.cream,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -637,7 +637,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppTheme.coffeeDark : AppTheme.earthSoft,
+              color: isSelected ? AppTheme.textDark : AppTheme.textSoft,
               size: 24,
             ),
             const SizedBox(height: 2),
@@ -646,7 +646,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                color: isSelected ? AppTheme.coffeeDark : AppTheme.earthSoft,
+                color: isSelected ? AppTheme.textDark : AppTheme.textSoft,
               ),
             ),
           ],
@@ -659,7 +659,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      backgroundColor: AppTheme.sandCream,
+      backgroundColor: AppTheme.cream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),

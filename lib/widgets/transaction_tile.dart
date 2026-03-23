@@ -53,7 +53,7 @@ class TransactionTile extends StatelessWidget {
           tx.category,
           style: const TextStyle(
             fontWeight: FontWeight.w800,
-            color: AppTheme.coffeeDark,
+            color: AppTheme.textDark,
           ),
         ),
         subtitle: Text(

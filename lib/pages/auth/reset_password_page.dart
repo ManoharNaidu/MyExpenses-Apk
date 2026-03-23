@@ -95,7 +95,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 14,
-                      color: AppTheme.earthSoft,
+                      color: AppTheme.textSoft,
                       height: 1.5,
                     ),
                   ),
@@ -112,13 +112,13 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 8,
-                      color: AppTheme.coffeeDark,
+                      color: AppTheme.textDark,
                     ),
                     decoration: InputDecoration(
                       counterText: '',
                       hintText: '000000',
                       hintStyle: TextStyle(
-                        color: AppTheme.earthSoft.withValues(alpha: 0.4),
+                        color: AppTheme.textSoft.withValues(alpha: 0.4),
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 8,
@@ -127,7 +127,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.white,
+                      fillColor: AppTheme.card,
                     ),
                     validator: (value) {
                       if (value == null || value.length != 6) {
@@ -160,7 +160,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.white,
+                      fillColor: AppTheme.card,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -196,7 +196,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.white,
+                      fillColor: AppTheme.card,
                     ),
                     validator: (value) {
                       if (value != _passwordController.text) {
@@ -214,8 +214,8 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleReset,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.sandBeige,
-                        foregroundColor: AppTheme.coffeeDark,
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: AppTheme.textDark,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -228,7 +228,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.coffeeDark,
+                                  AppTheme.textDark,
                                 ),
                               ),
                             )

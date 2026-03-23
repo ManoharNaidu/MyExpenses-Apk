@@ -87,13 +87,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppTheme.sandBeige.withValues(alpha: 0.2),
+                      color: AppTheme.accent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Icon(
                       Icons.lock_reset_rounded,
                       size: 40,
-                      color: AppTheme.sandBeige,
+                      color: AppTheme.accent,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -102,7 +102,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.coffeeDark,
+                      color: AppTheme.textDark,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -111,7 +111,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.earthSoft,
+                      color: AppTheme.textSoft,
                       height: 1.5,
                     ),
                   ),
@@ -127,7 +127,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.white,
+                      fillColor: AppTheme.card,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -146,8 +146,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleSendCode,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.sandBeige,
-                        foregroundColor: AppTheme.coffeeDark,
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: AppTheme.textDark,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -160,7 +160,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.coffeeDark,
+                                  AppTheme.textDark,
                                 ),
                               ),
                             )
