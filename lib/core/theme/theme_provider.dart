@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../storage/secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final themeProvider = ChangeNotifierProvider<ThemeProvider>((ref) {
+  return ThemeProvider();
+});
 
 class ThemeProvider extends ChangeNotifier {
   static const _themeKey = 'theme_mode';

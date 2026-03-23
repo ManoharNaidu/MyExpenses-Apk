@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/auth/auth_provider.dart';
-import '../core/constants/currencies.dart';
-import '../data/transaction_repository.dart';
-import '../models/transaction_model.dart';
-import '../widgets/empty_state.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../core/constants/currencies.dart';
+import '../../data/transaction_repository.dart';
+import '../../models/transaction_model.dart';
+import '../../widgets/empty_state.dart';
 
-class AnalyticsScreen extends StatefulWidget {
+class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 
   @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
+class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   int _selectedConcept = 0;
   int _touchedCategoryIndex = -1;
   DateTime _selectedMonth = DateTime(
@@ -46,7 +46,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   /// Returns a short currency symbol for chart labels (e.g. "$", "₹", "€").
   String _currencySymbol(BuildContext context) {
     final code =
-        context.read<AuthProvider>().state.effectiveCurrency;
+        ref.read(authProvider).state.effectiveCurrency;
     return currencyFromCode(code).symbol;
   }
 

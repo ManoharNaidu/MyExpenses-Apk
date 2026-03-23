@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../auth/auth_page.dart';
 import '../onboarding/category_selection_page.dart';
 import '../main/main_scaffold.dart';
 import '../main/app_lock_gate.dart';
 
-class RootRouter extends StatelessWidget {
+class RootRouter extends ConsumerWidget {
   const RootRouter({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>().state;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider).state;
     if (auth.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }

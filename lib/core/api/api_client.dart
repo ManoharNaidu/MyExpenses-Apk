@@ -1,10 +1,16 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import '../storage/secure_storage.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+/// Legacy compat response to avoid rewriting 20+ callers right now.
+/// The callers expect `res.statusCode` and `res.body`.
+class LegacyHttpResponse {
+  final int statusCode;
+  final String body;
+  LegacyHttpResponse(this.statusCode, this.body);
+}
 
 class ApiException implements Exception {
   final String message;
@@ -16,258 +22,130 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Callback invoked when the server returns 401 (expired / revoked token).
-/// Set by AuthProvider at startup so ApiClient can trigger logout globally.
 typedef UnauthorizedCallback = Future<void> Function();
 UnauthorizedCallback? _onUnauthorized;
 
+_parseAndDecode(String response) {
+  return jsonDecode(response);
+}
+
+parseJson(String text) {
+  return compute(_parseAndDecode, text);
+}
+
 class ApiClient {
-  // In release builds, inject API_URL at build time:
-  //   flutter build apk --dart-define=API_URL=https://your-api.com
-  // In debug builds, falls back to .env file (loaded by flutter_dotenv).
+  static final Dio _dio = _createDio();
   static String get _baseUrl {
-    const defined = String.fromEnvironment('API_URL');
-    if (defined.isNotEmpty) return defined;
-    // Guard against NotInitializedError: dotenv may not be loaded in
-    // release builds or unit-test contexts where .env is absent.
-    try {
-      return dotenv.env['API_URL'] ?? '';
-    } catch (_) {
-      // dotenv never initialised — return empty so callers get a clear
-      // network error rather than an unhandled crash.
-      return '';
-    }
+    const envUrl = String.fromEnvironment('API_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) return envUrl;
+    return 'https://my-expenses-backend-fastapi.onrender.com/api/v1';
   }
 
-  static const String genericUnexpectedMessage =
-      'Something unexpected happened. Please try again.';
+  static const String genericUnexpectedMessage = 'Something unexpected happened. Please try again.';
 
-  /// Register the logout callback once, from AuthProvider.
   static void setUnauthorizedCallback(UnauthorizedCallback cb) {
     _onUnauthorized = cb;
   }
 
-  static bool isSuccess(int statusCode) =>
-      statusCode >= 200 && statusCode < 300;
+  static Dio _createDio() {
+    final dio = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      responseType: ResponseType.plain,
+    ));
 
-  static String extractErrorMessage(
-    http.Response response, {
-    String fallbackMessage = genericUnexpectedMessage,
-  }) {
-    if (response.body.isEmpty) return fallbackMessage;
-    try {
-      final parsed = jsonDecode(response.body);
-      if (parsed is Map<String, dynamic>) {
-        final message =
-            parsed['message'] ?? parsed['detail'] ?? parsed['error'];
-        if (message is String && message.trim().isNotEmpty) {
-          return message.trim();
+    dio.transformer = BackgroundTransformer()..jsonDecodeCallback = parseJson;
+
+    dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        if (!options.extra.containsKey('noAuth')) {
+          final token = await SecureStorage.readToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
         }
-      }
-    } catch (_) {}
-    final raw = response.body.trim();
-    return raw.isEmpty ? fallbackMessage : raw;
+        return handler.next(options);
+      },
+      onError: (e, handler) async {
+        if (e.response?.statusCode == 401 && !e.requestOptions.extra.containsKey('noAuth')) {
+          await _handleUnauthorized();
+        }
+        return handler.next(e);
+      },
+    ));
+
+    return dio;
   }
 
-  static void ensureSuccess(
-    http.Response response, {
-    String fallbackMessage = genericUnexpectedMessage,
-  }) {
-    if (isSuccess(response.statusCode)) return;
-    throw ApiException(
-      extractErrorMessage(response, fallbackMessage: fallbackMessage),
-      statusCode: response.statusCode,
-    );
-  }
-
-  /// Handle 401 — trigger logout so the user is sent back to the login screen.
   static Future<void> _handleUnauthorized() async {
     debugPrint('🔒 401 received — clearing session');
     await SecureStorage.clear();
     if (_onUnauthorized != null) await _onUnauthorized!();
   }
 
-  static bool _isRetryableStatus(int statusCode) {
-    return statusCode == 408 ||
-        statusCode == 429 ||
-        statusCode == 502 ||
-        statusCode == 503 ||
-        statusCode == 504;
-  }
+  static bool isSuccess(int statusCode) => statusCode >= 200 && statusCode < 300;
 
-  static Future<http.Response> _withRetry(
-    Future<http.Response> Function() request,
-  ) async {
-    const maxAttempts = 2;
-    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        final response = await request();
-        if (!_isRetryableStatus(response.statusCode) ||
-            attempt == maxAttempts) {
-          return response;
-        }
-        debugPrint(
-          '♻️ Retrying request after status ${response.statusCode} (attempt $attempt/$maxAttempts)',
-        );
-      } on TimeoutException catch (_) {
-        if (attempt == maxAttempts) rethrow;
-        debugPrint(
-          '♻️ Retrying request after timeout (attempt $attempt/$maxAttempts)',
-        );
-      } catch (e) {
-        if (attempt == maxAttempts) rethrow;
-        debugPrint('♻️ Retrying request after network error: $e');
-      }
-      await Future.delayed(const Duration(milliseconds: 900));
-    }
-    return http.Response('{"error": "Retry failed"}', 500);
-  }
-
-  static Future<http.Response> post(
-    String path,
-    Object? body, {
-    bool requiresAuth = true,
-  }) async {
+  static String extractErrorMessage(LegacyHttpResponse response, {String fallbackMessage = genericUnexpectedMessage}) {
+    if (response.body.isEmpty) return fallbackMessage;
+    
     try {
-      final token = requiresAuth ? await SecureStorage.readToken() : null;
-      if (requiresAuth && token == null) {
-        debugPrint('❌ No auth token found!');
-        return http.Response('{"error": "No authentication token"}', 401);
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) {
+         return decoded['message']?.toString() ?? decoded['detail']?.toString() ?? decoded['error']?.toString() ?? response.body;
       }
-      final headers = <String, String>{'Content-Type': 'application/json'};
-      if (token != null) headers['Authorization'] = 'Bearer $token';
-
-      final url = '$_baseUrl$path';
-      debugPrint('🌐 POST $url');
-
-      final response = await _withRetry(
-        () => http
-            .post(Uri.parse(url), headers: headers, body: jsonEncode(body))
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () =>
-                  http.Response('{"error": "Request timeout"}', 408),
-            ),
-      );
-
-      debugPrint('📥 Response ${response.statusCode}: ${response.body}');
-      if (response.statusCode == 401 && requiresAuth) {
-        await _handleUnauthorized();
-      }
-      return response;
-    } catch (e) {
-      debugPrint('❌ API Error: $e');
-      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
-    }
+    } catch (_) { }
+    
+    return response.body; 
   }
 
-  static Future<http.Response> get(String path) async {
+  static void ensureSuccess(LegacyHttpResponse response, {String fallbackMessage = genericUnexpectedMessage}) {
+    if (isSuccess(response.statusCode)) return;
+    throw ApiException(extractErrorMessage(response, fallbackMessage: fallbackMessage), statusCode: response.statusCode);
+  }
+
+  static LegacyHttpResponse _wrap(Response? response) {
+    if (response == null) return LegacyHttpResponse(500, '{"message": "$genericUnexpectedMessage"}');
+    return LegacyHttpResponse(response.statusCode ?? 500, response.data?.toString() ?? '');
+  }
+
+  static Future<LegacyHttpResponse> post(String path, Object? body, {bool requiresAuth = true}) async {
     try {
-      final token = await SecureStorage.readToken();
-      if (token == null) {
-        debugPrint('❌ No auth token found!');
-        return http.Response('{"error": "No authentication token"}', 401);
-      }
-      final url = '$_baseUrl$path';
-      debugPrint('🌐 GET $url');
-
-      final response = await _withRetry(
-        () => http
-            .get(
-              Uri.parse(url),
-              headers: {
-                'Authorization': 'Bearer $token',
-                'Content-Type': 'application/json',
-              },
-            )
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () =>
-                  http.Response('{"error": "Request timeout"}', 408),
-            ),
-      );
-
-      debugPrint('📥 Response ${response.statusCode}: ${response.body}');
-      if (response.statusCode == 401) await _handleUnauthorized();
-      return response;
-    } catch (e) {
-      debugPrint('❌ API Error: $e');
-      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
+      final res = await _dio.post(path, data: body, options: Options(extra: requiresAuth ? {} : {'noAuth': true}));
+      return _wrap(res);
+    } on DioException catch (e) {
+      return _wrap(e.response);
     }
   }
 
-  static Future<http.Response> put(String path, Map body) async {
+  static Future<LegacyHttpResponse> get(String path) async {
     try {
-      final token = await SecureStorage.readToken();
-      if (token == null) {
-        debugPrint('❌ No auth token found!');
-        return http.Response('{"error": "No authentication token"}', 401);
-      }
-      final url = '$_baseUrl$path';
-      debugPrint('🌐 PUT $url');
-
-      final response = await _withRetry(
-        () => http
-            .put(
-              Uri.parse(url),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
-              body: jsonEncode(body),
-            )
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () =>
-                  http.Response('{"error": "Request timeout"}', 408),
-            ),
-      );
-
-      debugPrint('📥 Response ${response.statusCode}: ${response.body}');
-      if (response.statusCode == 401) await _handleUnauthorized();
-      return response;
-    } catch (e) {
-      debugPrint('❌ API Error: $e');
-      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
+      final res = await _dio.get(path);
+      return _wrap(res);
+    } on DioException catch (e) {
+      return _wrap(e.response);
     }
   }
 
-  static Future<http.Response> delete(String path) async {
+  static Future<LegacyHttpResponse> put(String path, Map body) async {
     try {
-      final token = await SecureStorage.readToken();
-      if (token == null) {
-        debugPrint('❌ No auth token found!');
-        return http.Response('{"error": "No authentication token"}', 401);
-      }
-      final url = '$_baseUrl$path';
-      debugPrint('🌐 DELETE $url');
-
-      final response = await _withRetry(
-        () => http
-            .delete(
-              Uri.parse(url),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
-            )
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () =>
-                  http.Response('{"error": "Request timeout"}', 408),
-            ),
-      );
-
-      debugPrint('📥 Response ${response.statusCode}: ${response.body}');
-      if (response.statusCode == 401) await _handleUnauthorized();
-      return response;
-    } catch (e) {
-      debugPrint('❌ API Error: $e');
-      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
+      final res = await _dio.put(path, data: body);
+      return _wrap(res);
+    } on DioException catch (e) {
+      return _wrap(e.response);
     }
   }
 
-  static Future<http.Response> uploadFile(
+  static Future<LegacyHttpResponse> delete(String path) async {
+    try {
+      final res = await _dio.delete(path);
+      return _wrap(res);
+    } on DioException catch (e) {
+      return _wrap(e.response);
+    }
+  }
+
+  static Future<LegacyHttpResponse> uploadFile(
     String path, {
     String fieldName = 'file',
     String? filePath,
@@ -277,54 +155,28 @@ class ApiClient {
     Map<String, String>? fields,
   }) async {
     try {
-      final token = requiresAuth ? await SecureStorage.readToken() : null;
-      if (requiresAuth && token == null) {
-        debugPrint('❌ No auth token found!');
-        return http.Response('{"error": "No authentication token"}', 401);
-      }
-      if (filePath == null && fileBytes == null) {
-        return http.Response('{"error": "No file provided"}', 400);
-      }
-
-      final url = '$_baseUrl$path';
-      debugPrint('🌐 UPLOAD $url');
-
-      final request = http.MultipartRequest('POST', Uri.parse(url));
-      if (token != null) request.headers['Authorization'] = 'Bearer $token';
-      if (fields != null && fields.isNotEmpty) request.fields.addAll(fields);
-
+      Object? fileTarget;
       if (fileBytes != null) {
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            fieldName,
-            fileBytes,
-            filename: fileName ?? 'upload.pdf',
-            contentType: MediaType('application', 'pdf'),
-          ),
-        );
+        fileTarget = MultipartFile.fromBytes(fileBytes, filename: fileName ?? 'upload.pdf');
+      } else if (filePath != null) {
+        fileTarget = await MultipartFile.fromFile(filePath, filename: fileName);
       } else {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            fieldName,
-            filePath!,
-            filename: fileName,
-            contentType: MediaType('application', 'pdf'),
-          ),
-        );
+        return LegacyHttpResponse(400, '{"error": "No file provided"}');
       }
 
-      final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 60));
-      final response = await http.Response.fromStream(streamedResponse);
-      debugPrint(
-          '📥 Upload response ${response.statusCode}: ${response.body}');
-      if (response.statusCode == 401 && requiresAuth) {
-        await _handleUnauthorized();
-      }
-      return response;
-    } catch (e) {
-      debugPrint('❌ Upload API Error: $e');
-      return http.Response('{"message": "$genericUnexpectedMessage"}', 500);
+      final formData = FormData.fromMap({
+        ...?fields,
+        fieldName: fileTarget,
+      });
+
+      final res = await _dio.post(
+        path, 
+        data: formData, 
+        options: Options(extra: requiresAuth ? {} : {'noAuth': true})
+      );
+      return _wrap(res);
+    } on DioException catch (e) {
+      return _wrap(e.response);
     }
   }
 }

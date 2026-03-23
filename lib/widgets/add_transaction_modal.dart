@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/transaction_model.dart';
 import '../data/transaction_repository.dart';
 import '../core/auth/auth_provider.dart';
@@ -10,17 +10,17 @@ import 'app_feedback_dialog.dart';
 const _kLastTxTypeKey = 'last_tx_type';
 const _kLastTxCategoryKey = 'last_tx_category';
 
-class AddTransactionModal extends StatefulWidget {
+class AddTransactionModal extends ConsumerStatefulWidget {
   final TransactionModel? existing;
   final VoidCallback onSaved;
 
   const AddTransactionModal({super.key, this.existing, required this.onSaved});
 
   @override
-  State<AddTransactionModal> createState() => _AddTransactionModalState();
+  ConsumerState<AddTransactionModal> createState() => _AddTransactionModalState();
 }
 
-class _AddTransactionModalState extends State<AddTransactionModal> {
+class _AddTransactionModalState extends ConsumerState<AddTransactionModal> {
   TxType type = TxType.expense;
   String category = '';
   DateTime date = DateTime.now();
@@ -70,7 +70,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.watch<AuthProvider>().state;
+    final authState = ref.watch(authProvider).state;
     final selectedUserExpenseCats = authState.effectiveExpenseCategories;
     final selectedIncomeCats = authState.effectiveIncomeCategories;
 
@@ -147,7 +147,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
             // Category dropdown
             DropdownButtonFormField<String>(
-              value: selectedCategory,
+              initialValue: selectedCategory,
               items: cats
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),

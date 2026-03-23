@@ -7,6 +7,11 @@ import '../storage/secure_storage.dart';
 import 'auth_state.dart';
 import '../../data/transaction_repository.dart';
 import '../../data/staged_draft_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final authProvider = ChangeNotifierProvider<AuthProvider>((ref) {
+  return AuthProvider()..loadSession();
+});
 
 class AuthProvider extends ChangeNotifier {
   static const _profileKey = 'auth_profile';

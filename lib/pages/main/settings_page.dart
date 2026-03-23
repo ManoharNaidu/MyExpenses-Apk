@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/categories.dart';
@@ -10,14 +10,14 @@ import '../../core/theme/theme_provider.dart';
 import '../../data/transaction_repository.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
 
   @override
@@ -34,19 +34,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final themeProvider = context.watch<ThemeProvider>();
-    final userName = authProvider.state.userName ?? "User";
-    final userEmail = authProvider.state.userEmail ?? "";
-    final userIncomeCategories = authProvider.state.effectiveIncomeCategories;
-    final userExpenseCategories = authProvider.state.effectiveExpenseCategories;
-    final userCurrency = authProvider.state.effectiveCurrency;
+    final authProv = ref.watch(authProvider);
+    final themeProv = ref.watch(themeProvider);
+    final userName = authProv.state.userName ?? "User";
+    final userEmail = authProv.state.userEmail ?? "";
+    final userIncomeCategories = authProv.state.effectiveIncomeCategories;
+    final userExpenseCategories = authProv.state.effectiveExpenseCategories;
+    final userCurrency = authProv.state.effectiveCurrency;
     final userCurrencyOption = currencyFromCode(userCurrency);
     final userCategories = {
       ...userIncomeCategories,
       ...userExpenseCategories,
     }.toList();
-    final isDarkMode = themeProvider.mode == ThemeMode.dark;
+    final isDarkMode = themeProv.mode == ThemeMode.dark;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -195,7 +195,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: const Text("Use dark appearance across the app"),
                   value: isDarkMode,
                   onChanged: (_) async {
-                    await context.read<ThemeProvider>().toggleTheme();
+                    await ref.read(themeProvider).toggleTheme();
                   },
                 ),
                 const Divider(height: 1),
@@ -233,8 +233,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   leading: const Icon(Icons.lock_person_outlined),
                   title: const Text("App Lock"),
                   subtitle: Text(
-                    authProvider.state.appLockEnabled
-                        ? (authProvider.state.appLockUseBiometric
+                    authProv.state.appLockEnabled
+                        ? (authProv.state.appLockUseBiometric
                               ? 'Enabled (PIN + Biometric)'
                               : 'Enabled (PIN)')
                         : 'Disabled',
@@ -347,7 +347,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 final code = selectedCurrency;
 
                 try {
-                  await context.read<AuthProvider>().updateCurrency(code);
+                  await ref.read(authProvider).updateCurrency(code);
                   if (context.mounted) {
                     Navigator.pop(context);
                     await showAppFeedbackDialog(
@@ -410,7 +410,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 try {
-                  await context.read<AuthProvider>().updateName(
+                  await ref.read(authProvider).updateName(
                     nameController.text.trim(),
                   );
                   if (context.mounted) {
@@ -512,7 +512,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 try {
-                  await context.read<AuthProvider>().updatePassword(
+                  await ref.read(authProvider).updatePassword(
                     currentPasswordController.text,
                     newPasswordController.text,
                   );
@@ -710,7 +710,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ? null
                   : () async {
                       try {
-                        await context.read<AuthProvider>().updateCategories(
+                        await ref.read(authProvider).updateCategories(
                           incomeCategories: selectedIncome.toList(),
                           expenseCategories: selectedExpense.toList(),
                         );
@@ -760,7 +760,7 @@ class _SettingsPageState extends State<SettingsPage> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              await context.read<AuthProvider>().logout();
+              await ref.read(authProvider).logout();
               if (!context.mounted) return;
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
@@ -963,7 +963,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _showAppLockDialog(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
+    final auth = ref.read(authProvider);
     final pinCtrl = TextEditingController();
     var enabled = auth.state.appLockEnabled;
     var biometric = auth.state.appLockUseBiometric;
@@ -1128,7 +1128,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                       setState(() => isSubmitting = true);
                       try {
-                        await context.read<AuthProvider>().submitFeedback(
+                        await ref.read(authProvider).submitFeedback(
                           feedbackController.text,
                         );
                         if (!dialogContext.mounted) return;

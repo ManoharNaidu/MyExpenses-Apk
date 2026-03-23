@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
 import '../../core/storage/secure_storage.dart';
-import '../../screens/dashboard_screen.dart';
-import '../../screens/history_screen.dart';
-import '../../screens/analytics_screen.dart';
+import 'dashboard_screen.dart';
+import 'history_screen.dart';
+import 'analytics_screen.dart';
 import 'settings_page.dart';
 import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
 import '../../utils/csv_export.dart';
 import '../../widgets/app_feedback_dialog.dart';
+import '../../widgets/add_transaction_modal.dart';
+import '../../core/api/pdf_upload_provider.dart';
 
-class MainScaffold extends StatefulWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int index = 0;
   bool _hasCheckedFirstRunGuide = false;
 
@@ -39,7 +41,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (!mounted || _hasCheckedFirstRunGuide) return;
     _hasCheckedFirstRunGuide = true;
 
-    final authState = context.read<AuthProvider>().state;
+    final authState = ref.read(authProvider).state;
     if (!authState.isLoggedIn || !authState.isOnboarded) return;
 
     final userKey = (authState.userId ?? authState.userEmail ?? 'user').trim();
@@ -267,7 +269,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _showCurrencyPicker() async {
-    final currentCode = context.read<AuthProvider>().state.effectiveCurrency;
+    final currentCode = ref.read(authProvider).state.effectiveCurrency;
     final normalized = currentCode.trim().toUpperCase();
     var selectedCurrency = supportedCurrencies.any((c) => c.code == normalized)
         ? normalized
@@ -304,9 +306,9 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
             FilledButton(
               onPressed: () async {
-                final authProvider = context.read<AuthProvider>();
+                final authProv = ref.read(authProvider);
                 try {
-                  await authProvider.updateCurrency(selectedCurrency);
+                  await authProv.updateCurrency(selectedCurrency);
                   if (dialogContext.mounted) {
                     Navigator.pop(dialogContext);
                   }
@@ -461,13 +463,15 @@ class _MainScaffoldState extends State<MainScaffold> {
     const DashboardScreen(),
     const HistoryScreen(),
     const AnalyticsScreen(),
+    const SettingsPage(),
   ];
 
-  final titles = ["My Expenses", "History", "Analytics"];
+  final titles = ["My Expenses", "History", "Analytics", "Settings"];
 
   @override
   Widget build(BuildContext context) {
-    final currency = context.watch<AuthProvider>().state.effectiveCurrency;
+    _listenToPdfUploads();
+    final currency = ref.watch(authProvider).state.effectiveCurrency;
     final currencyOption = currencyFromCode(currency);
     final theme = Theme.of(context);
 
@@ -503,7 +507,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               )
             : null,
         title: Text(titles[index]),
-        actions: index == 0
+        actions: index != 4
             ? [
                 StreamBuilder<int>(
                   stream: TransactionRepository.getOutboxCountStream(),
@@ -564,36 +568,188 @@ class _MainScaffoldState extends State<MainScaffold> {
                   onPressed: _exportTransactions,
                   icon: const Icon(Icons.download_rounded),
                 ),
-                IconButton(
-                  tooltip: 'Settings',
-                  onPressed: _openSettings,
-                  icon: const Icon(Icons.settings_rounded),
-                ),
               ]
             : null,
       ),
       body: pages[index],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: index,
-        onTap: (i) => setState(() => index = i),
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
-            label: "Dashboard",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history_rounded),
-            label: "History",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: "Analytics",
-          ),
-        ],
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddMenu(context),
+        shape: const CircleBorder(),
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, size: 32),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(0, Icons.dashboard_rounded, "Home"),
+            _buildNavItem(1, Icons.history_rounded, "History"),
+            const SizedBox(width: 40), // Space for FAB
+            _buildNavItem(2, Icons.bar_chart_rounded, "Analytics"),
+            _buildNavItem(3, Icons.settings_rounded, "Settings"),
+          ],
+        ),
       ),
     );
+  }
+
+  void _listenToPdfUploads() {
+    ref.listen(pdfUploadProvider, (previous, next) {
+      if (next.isUploading) return;
+      if (next.error != null) {
+        showAppFeedbackDialog(
+          context,
+          title: "Upload Error",
+          message: next.error!,
+          type: AppFeedbackType.error,
+        );
+      } else if (next.lastExtracted != null) {
+        showAppFeedbackDialog(
+          context,
+          title: "Upload Successful",
+          message: next.lastExtracted!.isEmpty
+              ? "No transactions were found in that PDF."
+              : "Extracted ${next.lastExtracted!.length} transactions. Review them in the staging area.",
+          type: next.lastExtracted!.isEmpty ? AppFeedbackType.error : AppFeedbackType.success,
+        );
+      }
+    });
+  }
+
+  Widget _buildNavItem(int itemIndex, IconData icon, String label) {
+    final isSelected = index == itemIndex;
+    final theme = Theme.of(context);
+    
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => index = itemIndex),
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? theme.colorScheme.primary : Colors.grey,
+              size: 24,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                color: isSelected ? theme.colorScheme.primary : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Add Transaction",
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMenuAction(
+                    context,
+                    icon: Icons.edit_note_rounded,
+                    label: "Manual Entry",
+                    color: Colors.indigo,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        showDragHandle: true,
+                        builder: (_) => AddTransactionModal(onSaved: () {}),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildMenuAction(
+                    context,
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: "Upload PDF",
+                    color: Colors.deepOrange,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      ref.read(pdfUploadProvider.notifier).pickAndUpload();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAppFeedbackDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required AppFeedbackType type,
+  }) {
+    return showAppFeedbackDialog(context, title: title, message: message, type: type);
   }
 }

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/categories.dart';
 import '../../core/constants/currencies.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
-class CategorySelectionPage extends StatefulWidget {
+class CategorySelectionPage extends ConsumerStatefulWidget {
   const CategorySelectionPage({super.key});
 
   @override
-  State<CategorySelectionPage> createState() => _CategorySelectionPageState();
+  ConsumerState<CategorySelectionPage> createState() => _CategorySelectionPageState();
 }
 
-class _CategorySelectionPageState extends State<CategorySelectionPage> {
+class _CategorySelectionPageState extends ConsumerState<CategorySelectionPage> {
   final Set<String> selectedIncome = {};
   final Set<String> selectedExpense = {};
   final _incomeCtrl = TextEditingController();
@@ -24,7 +24,7 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
   void initState() {
     super.initState();
     final initialCurrency =
-        context.read<AuthProvider>().state.effectiveCurrency;
+        ref.read(authProvider).state.effectiveCurrency;
     final normalizedInitial = initialCurrency.trim().toUpperCase();
     _selectedCurrency = supportedCurrencies.any(
       (c) => c.code == normalizedInitial,
@@ -272,7 +272,7 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                         );
 
                         try {
-                          final auth = context.read<AuthProvider>();
+                          final auth = ref.read(authProvider);
                           if (currencyCode != auth.state.effectiveCurrency) {
                             await auth.updateCurrency(currencyCode);
                           }
@@ -316,7 +316,7 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                   final currencyCode = _selectedCurrency;
 
                   try {
-                    final auth = context.read<AuthProvider>();
+                    final auth = ref.read(authProvider);
                     if (currencyCode != auth.state.effectiveCurrency) {
                       await auth.updateCurrency(currencyCode);
                     }

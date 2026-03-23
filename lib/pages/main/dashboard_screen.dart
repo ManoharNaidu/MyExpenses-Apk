@@ -4,28 +4,31 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:provider/provider.dart';
-import '../models/transaction_model.dart';
-import '../models/staged_transaction_draft.dart';
-import '../utils/date_utils.dart';
-import '../widgets/add_transaction_modal.dart';
-import '../widgets/app_feedback_dialog.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/summary_card.dart';
-import '../data/transaction_repository.dart';
-import '../data/staged_draft_repository.dart';
-import '../core/api/api_client.dart';
-import '../core/auth/auth_provider.dart';
-import '../core/constants/currencies.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/transaction_model.dart';
+import '../../models/staged_transaction_draft.dart';
+import '../../utils/date_utils.dart';
+import '../../widgets/add_transaction_modal.dart';
+import '../../widgets/app_feedback_dialog.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/summary_card.dart';
+import '../../widgets/transaction_tile.dart';
+import '../../data/transaction_repository.dart';
+import '../../data/staged_draft_repository.dart';
+import '../../core/api/api_client.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../core/constants/currencies.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _isUploadingPdf = false;
 
   @override
@@ -133,12 +136,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
-      final selectedUserCats = context
-          .read<AuthProvider>()
+      final selectedUserCats = ref.read(authProvider)
           .state
           .effectiveExpenseCategories;
-      final selectedIncomeCats = context
-          .read<AuthProvider>()
+      final selectedIncomeCats = ref.read(authProvider)
           .state
           .effectiveIncomeCategories;
 
@@ -298,7 +299,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyCode = context.watch<AuthProvider>().state.effectiveCurrency;
+    final currencyCode = ref.watch(authProvider).state.effectiveCurrency;
     final currencyOption = currencyFromCode(currencyCode);
 
     String formatMoney(double amount) {
@@ -350,19 +351,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final monthNet = sumWhere(isThisMonth);
 
         final weekIncome = incomeWhere(isThisWeek);
-        final weekExpense = expenseWhere(isThisWeek);
+        final weekExpense = expenseWhere(isThisMonth);
 
         return Scaffold(
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              showDragHandle: true,
-              builder: (_) => AddTransactionModal(onSaved: () {}),
-            ),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text("Add"),
-          ),
           body: RefreshIndicator(
             onRefresh: () =>
                 TransactionRepository.loadInitial(forceRefresh: true),
@@ -384,50 +375,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         showDragHandle: true,
                         builder: (_) => AddTransactionModal(onSaved: () {}),
                       ),
-                    ),
+                    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
                     const SizedBox(height: 24),
                   ],
-                  SummaryCard(
-                    title: "This Week (Net)",
-                    value: formatMoney(weekNet),
-                    icon: Icons.date_range_rounded,
-                  ),
-                  SummaryCard(
-                    title: "This Month (Net)",
-                    value: formatMoney(monthNet),
-                    icon: Icons.calendar_month_rounded,
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _isUploadingPdf ? null : _uploadPdfAndReview,
-                      icon: _isUploadingPdf
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.picture_as_pdf_rounded),
-                      label: Text(
-                        _isUploadingPdf
-                            ? 'Uploading PDF...'
-                            : 'Upload Bank PDF',
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SummaryCard(
+                          title: "This Week (Net)",
+                          value: formatMoney(weekNet),
+                          icon: Icons.date_range_rounded,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _reviewStagedTransactions,
-                      icon: const Icon(
-                        Icons.playlist_add_check_circle_outlined,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SummaryCard(
+                          title: "This Month (Net)",
+                          value: formatMoney(monthNet),
+                          icon: Icons.calendar_month_rounded,
+                        ),
                       ),
-                      label: const Text('Review staged transactions'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+                    ],
+                  ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.05),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -437,7 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: Icons.arrow_downward_rounded,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: SummaryCard(
                           title: "Week Expense",
@@ -446,11 +416,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ],
-                  ),
+                  ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.05),
                   const SizedBox(height: 14),
-                  Text(
-                    "Recent",
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Recent",
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      TextButton.icon(
+                        onPressed: _reviewStagedTransactions,
+                        icon: const Icon(Icons.playlist_add_check_circle_outlined, size: 18),
+                        label: const Text("Review Staged"),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   if (txs.isEmpty)
@@ -469,28 +449,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ...txs
                         .take(10)
                         .map(
-                          (t) => Card(
-                            child: ListTile(
-                              title: Text(
-                                t.category,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                          (t) => TransactionTile(
+                            tx: t,
+                            onEdit: () {
+                               showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                showDragHandle: true,
+                                builder: (_) => AddTransactionModal(
+                                  existing: t,
+                                  onSaved: () {},
                                 ),
-                              ),
-                              subtitle: Text(
-                                "${DateUtilsX.yyyyMmDd(t.date)} • ${t.type == TxType.income ? "Income" : "Expense"}",
-                              ),
-                              trailing: Text(
-                                '${t.type == TxType.income ? "+" : "-"}${currencyOption.symbol}${t.amount.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  color: t.type == TxType.income
-                                      ? Colors.green.shade700
-                                      : Colors.red.shade700,
+                              );
+                            },
+                            onDelete: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Delete Transaction'),
+                                  content: const Text('Are you sure you want to delete this transaction?'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ),
+                              );
+                              if (confirm == true) {
+                                await TransactionRepository.delete(t.id!);
+                                HapticFeedback.lightImpact();
+                              }
+                            },
+                          )
+                              .animate()
+                              .fadeIn()
+                              .slideY(begin: 0.1),
                         ),
                 ],
               ),
@@ -502,7 +494,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _StagingReviewScreen extends StatefulWidget {
+class _StagingReviewScreen extends ConsumerStatefulWidget {
   final List<StagedTransactionDraft> drafts;
   final List<String> incomeCategories;
   final List<String> expenseCategories;
@@ -514,10 +506,10 @@ class _StagingReviewScreen extends StatefulWidget {
   });
 
   @override
-  State<_StagingReviewScreen> createState() => _StagingReviewScreenState();
+  ConsumerState<_StagingReviewScreen> createState() => _StagingReviewScreenState();
 }
 
-class _StagingReviewScreenState extends State<_StagingReviewScreen> {
+class _StagingReviewScreenState extends ConsumerState<_StagingReviewScreen> {
   late final List<StagedTransactionDraft> _edited;
 
   @override
@@ -526,9 +518,18 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
     _edited = List<StagedTransactionDraft>.from(widget.drafts);
   }
 
+  void _toggleAll(bool value) {
+    setState(() {
+      for (var i = 0; i < _edited.length; i++) {
+        _edited[i] = _edited[i].copyWith(accepted: value);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final acceptedCount = _edited.where((e) => e.accepted).length;
+    final allSelected = acceptedCount == _edited.length;
     final validSelectedCount = _edited
         .where(
           (e) =>
@@ -540,11 +541,18 @@ class _StagingReviewScreenState extends State<_StagingReviewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Review staged transactions'),
+        title: const Text('Review staged'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => _toggleAll(!allSelected),
+            child: Text(allSelected ? 'Deselect All' : 'Select All'),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [

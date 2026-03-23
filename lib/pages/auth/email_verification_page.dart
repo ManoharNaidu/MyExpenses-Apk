@@ -1,21 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
 
-class EmailVerificationPage extends StatefulWidget {
+class EmailVerificationPage extends ConsumerStatefulWidget {
   final String email;
 
   const EmailVerificationPage({super.key, required this.email});
 
   @override
-  State<EmailVerificationPage> createState() => _EmailVerificationPageState();
+  ConsumerState<EmailVerificationPage> createState() => _EmailVerificationPageState();
 }
 
-class _EmailVerificationPageState extends State<EmailVerificationPage> {
+class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
   final _codeController = TextEditingController();
   bool _isVerifying = false;
   bool _isResending = false;
@@ -64,7 +64,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
     setState(() => _isVerifying = true);
     try {
-      await context.read<AuthProvider>().verifyEmail(widget.email, code);
+      await ref.read(authProvider).verifyEmail(widget.email, code);
       if (mounted) {
         // After successful verification, the user is now logged in.
         // Navigate back to root so RootRouter picks up the new state.
@@ -88,7 +88,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   Future<void> _handleResend() async {
     setState(() => _isResending = true);
     try {
-      await context.read<AuthProvider>().sendVerificationCode(
+      await ref.read(authProvider).sendVerificationCode(
         email: widget.email,
       );
       _startCooldown();

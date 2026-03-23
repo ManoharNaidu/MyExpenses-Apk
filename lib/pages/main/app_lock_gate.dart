@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/security/app_lock_service.dart';
 import 'main_scaffold.dart';
 
-class AppLockGate extends StatefulWidget {
+class AppLockGate extends ConsumerStatefulWidget {
   const AppLockGate({super.key});
 
   @override
-  State<AppLockGate> createState() => _AppLockGateState();
+  ConsumerState<AppLockGate> createState() => _AppLockGateState();
 }
 
-class _AppLockGateState extends State<AppLockGate> {
+class _AppLockGateState extends ConsumerState<AppLockGate> {
   final TextEditingController _pinController = TextEditingController();
   String? _error;
   bool _unlocking = false;
@@ -31,7 +31,7 @@ class _AppLockGateState extends State<AppLockGate> {
   }
 
   Future<void> _tryBiometric() async {
-    final auth = context.read<AuthProvider>().state;
+    final auth = ref.read(authProvider).state;
     if (!auth.appLockEnabled || !auth.appLockUseBiometric) return;
 
     final ok = await AppLockService.authenticateWithBiometric();
@@ -40,7 +40,7 @@ class _AppLockGateState extends State<AppLockGate> {
   }
 
   Future<void> _unlockWithPin() async {
-    final auth = context.read<AuthProvider>().state;
+    final auth = ref.read(authProvider).state;
     final entered = _pinController.text.trim();
     if (entered.length < 4) {
       setState(() => _error = 'Enter a valid PIN');

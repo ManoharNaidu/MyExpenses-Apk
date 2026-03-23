@@ -1,19 +1,20 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../data/transaction_repository.dart';
-import '../models/transaction_model.dart';
-import '../widgets/add_transaction_modal.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/transaction_tile.dart';
+import '../../data/transaction_repository.dart';
+import '../../models/transaction_model.dart';
+import '../../widgets/add_transaction_modal.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/transaction_tile.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   String typeFilter = "All";
   String categoryFilter = "All";
   String monthFilter = "All"; // yyyy-mm
