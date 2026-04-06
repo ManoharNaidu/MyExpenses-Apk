@@ -7,11 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/auth/auth_provider.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/theme/theme_provider.dart';
+import 'core/supabase/supabase_client.dart';
 import 'pages/router/root_router.dart';
 import 'app/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initSupabase();
 
   runApp(
     const ProviderScope(

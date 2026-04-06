@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../storage/secure_storage.dart';
+import '../supabase/supabase_client.dart';
 
 /// Legacy compat response to avoid rewriting 20+ callers right now.
 /// The callers expect `res.statusCode` and `res.body`.
@@ -60,7 +61,7 @@ class ApiClient {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         if (!options.extra.containsKey('noAuth')) {
-          final token = await SecureStorage.readToken();
+          final token = supabaseClient.auth.currentSession?.accessToken;
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -79,8 +80,8 @@ class ApiClient {
   }
 
   static Future<void> _handleUnauthorized() async {
-    debugPrint('🔒 401 received — clearing session');
-    await SecureStorage.clear();
+    debugPrint('🔒 401 received — signing out of Supabase');
+    await supabaseClient.auth.signOut();
     if (_onUnauthorized != null) await _onUnauthorized!();
   }
 
