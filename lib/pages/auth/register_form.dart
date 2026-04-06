@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
-import 'email_verification_page.dart';
 
 class RegisterForm extends ConsumerStatefulWidget {
   const RegisterForm({super.key});
@@ -40,14 +39,6 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
         email: email,
         password: _passwordController.text,
       );
-      if (mounted) {
-        // Registration succeeded – navigate to verification page
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => EmailVerificationPage(email: email),
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         await showAppFeedbackDialog(

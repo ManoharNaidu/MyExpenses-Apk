@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
-import '../../core/api/api_client.dart';
+
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import 'forgot_password_page.dart';
-import 'email_verification_page.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({super.key});
@@ -38,25 +37,6 @@ class _LoginFormState extends ConsumerState<LoginForm> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-    } on ApiException catch (e) {
-      if (mounted) {
-        if (e.statusCode == 403) {
-          // Email not verified – backend already sent a new OTP
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  EmailVerificationPage(email: _emailController.text.trim()),
-            ),
-          );
-        } else {
-          await showAppFeedbackDialog(
-            context,
-            title: 'Login Failed',
-            message: '$e',
-            type: AppFeedbackType.error,
-          );
-        }
-      }
     } catch (e) {
       if (mounted) {
         await showAppFeedbackDialog(
