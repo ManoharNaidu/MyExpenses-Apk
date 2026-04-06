@@ -32,6 +32,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     setState(() => _notificationsEnabled = enabled);
   }
 
+  // ─── Design system colors (Figma-aligned) ───
+  static const _indigo = Color(0xFF4F46E5);
+  static const _indigoLight = Color(0xFFE0E7FF);
+  static const _bgLight = Color(0xFFF8F9FA);
+  static const _cardBg = Colors.white;
+  static const _fieldBg = Color(0xFFF3F4F6);
+  static const _textPrimary = Color(0xFF111827);
+  static const _textSecondary = Color(0xFF6B7280);
+  static const _green = Color(0xFF22C55E);
+  static const _red = Color(0xFFEF4444);
+  static const _divider = Color(0xFFF3F4F6);
+
+  // ─── Dark mode colors ───
+  static const _bgDark = Color(0xFF1E1C1A);
+  static const _cardDark = Color(0xFF2B2825);
+  static const _fieldDark = Color(0xFF3A3633);
+  static const _textPrimaryDark = Color(0xFFF9FAFB);
+  static const _textSecondaryDark = Color(0xFF9CA3AF);
+  static const _dividerDark = Color(0xFF3A3633);
+
   @override
   Widget build(BuildContext context) {
     final authProv = ref.watch(authProvider);
@@ -42,270 +62,687 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final userExpenseCategories = authProv.state.effectiveExpenseCategories;
     final userCurrency = authProv.state.effectiveCurrency;
     final userCurrencyOption = currencyFromCode(userCurrency);
-    final userCategories = {
-      ...userIncomeCategories,
-      ...userExpenseCategories,
-    }.toList();
     final isDarkMode = themeProv.mode == ThemeMode.dark;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    // Adaptive colors
+    final bg = isDarkMode ? _bgDark : _bgLight;
+    final card = isDarkMode ? _cardDark : _cardBg;
+    final field = isDarkMode ? _fieldDark : _fieldBg;
+    final textPri = isDarkMode ? _textPrimaryDark : _textPrimary;
+    final textSec = isDarkMode ? _textSecondaryDark : _textSecondary;
+    final divider = isDarkMode ? _dividerDark : _divider;
+
+    // Initials for the avatar
+    final initials = userName.isNotEmpty
+        ? userName
+            .split(' ')
+            .where((w) => w.isNotEmpty)
+            .take(2)
+            .map((w) => w[0].toUpperCase())
+            .join()
+        : 'U';
+
+    return Container(
+      color: bg,
       child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
+          // ─── Title ───
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20, top: 4),
+            child: Text(
+              'Settings',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: textPri,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+
+          // ═══════════════════════════════════════════
+          // 1) PROFILE SECTION
+          // ═══════════════════════════════════════════
+          _sectionCard(
+            card: card,
+            children: [
+              _sectionHeader(Icons.person_outline, 'Profile', textPri),
+              const SizedBox(height: 16),
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Theme.of(context).primaryColor,
-                        child: Text(
-                          userName.isNotEmpty ? userName[0].toUpperCase() : "U",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                  // Avatar
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: _indigo,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Fields
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Full Name
+                        Text(
+                          'Full Name',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: textSec,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () =>
+                              _showChangeNameDialog(context, userName),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: field,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
                               userName,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              userEmail,
                               style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
+                                fontSize: 15,
+                                color: textPri,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  if (userCategories.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Your Categories (${userCategories.length})",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: userCategories
-                          .map(
-                            (cat) => Chip(
-                              label: Text(cat),
-                              backgroundColor: Colors.blue[50],
-                              labelStyle: const TextStyle(fontSize: 12),
+                        const SizedBox(height: 14),
+                        // Currency
+                        Text(
+                          'Currency',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: textSec,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => _showChangeCurrencyDialog(
+                            context,
+                            userCurrencyOption.code,
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
                             ),
-                          )
-                          .toList(),
+                            decoration: BoxDecoration(
+                              color: field,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              userCurrencyOption.label,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: textPri,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              // Email display
+              if (userEmail.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  userEmail,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textSec,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ═══════════════════════════════════════════
+          // 2) EXPORT DATA SECTION
+          // ═══════════════════════════════════════════
+          _sectionCard(
+            card: card,
+            children: [
+              _sectionHeader(Icons.download_outlined, 'Export Data', textPri),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _exportButton(
+                      icon: Icons.description_outlined,
+                      label: 'Export CSV',
+                      field: field,
+                      textPri: textPri,
+                      onTap: () => _doExport(context, 'csv'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _exportButton(
+                      icon: Icons.picture_as_pdf_outlined,
+                      label: 'Export PDF',
+                      field: field,
+                      textPri: textPri,
+                      onTap: () => _doExport(context, 'pdf'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Export your expense data for backup or analysis in other tools.',
+                style: TextStyle(fontSize: 12, color: textSec),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ═══════════════════════════════════════════
+          // 3) PREFERENCES SECTION
+          // ═══════════════════════════════════════════
+          _sectionCard(
+            card: card,
+            children: [
+              _sectionHeader(Icons.settings_outlined, 'Preferences', textPri),
+              const SizedBox(height: 8),
+              // Dark Mode
+              _toggleRow(
+                icon: Icons.dark_mode_outlined,
+                title: 'Dark Mode',
+                subtitle: 'Switch to dark theme',
+                value: isDarkMode,
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                onChanged: (_) async {
+                  await ref.read(themeProvider).toggleTheme();
+                },
+              ),
+              Container(height: 1, color: divider),
+              // Notifications
+              _toggleRow(
+                icon: Icons.notifications_outlined,
+                title: 'Push Notifications',
+                subtitle: 'Get notified about expenses',
+                value: _notificationsEnabled,
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                onChanged: (value) async {
+                  await NotificationService.setEnabled(value);
+                  if (!mounted) return;
+                  setState(() => _notificationsEnabled = value);
+                },
+              ),
+              Container(height: 1, color: divider),
+              // Budget Alerts
+              _toggleRow(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Budget Alerts',
+                subtitle: 'Alert when overspending',
+                value: true,
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                showDivider: false,
+                onChanged: (_) => _showBudgetGoalDialog(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ═══════════════════════════════════════════
+          // 4) SECURITY & PRIVACY SECTION
+          // ═══════════════════════════════════════════
+          _sectionCard(
+            card: card,
+            children: [
+              _sectionHeader(
+                  Icons.shield_outlined, 'Security & Privacy', textPri),
+              const SizedBox(height: 8),
+              _navRow(
+                icon: Icons.category_outlined,
+                title: 'Edit Categories',
+                textPri: textPri,
+                divider: divider,
+                onTap: () => _showEditCategoriesDialog(
+                  context,
+                  userIncomeCategories,
+                  userExpenseCategories,
+                ),
+              ),
+              Container(height: 1, color: divider),
+              _navRow(
+                icon: Icons.lock_outline,
+                title: 'Change Password',
+                textPri: textPri,
+                divider: divider,
+                onTap: () => _showChangePasswordDialog(context),
+              ),
+              Container(height: 1, color: divider),
+              _navRow(
+                icon: Icons.lock_person_outlined,
+                title: 'App Lock',
+                subtitle: authProv.state.appLockEnabled
+                    ? (authProv.state.appLockUseBiometric
+                        ? 'Enabled (PIN + Biometric)'
+                        : 'Enabled (PIN)')
+                    : 'Disabled',
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                onTap: () => _showAppLockDialog(context),
+              ),
+              Container(height: 1, color: divider),
+              _navRow(
+                icon: Icons.privacy_tip_outlined,
+                title: 'Privacy Settings',
+                textPri: textPri,
+                divider: divider,
+                showDivider: false,
+                onTap: () => _showPrivacyInfo(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ═══════════════════════════════════════════
+          // 5) HELP & FEEDBACK SECTION
+          // ═══════════════════════════════════════════
+          _sectionCard(
+            card: card,
+            children: [
+              _sectionHeader(
+                  Icons.help_outline_rounded, 'Help & Feedback', textPri),
+              const SizedBox(height: 8),
+              _navRow(
+                icon: Icons.feedback_outlined,
+                title: 'Send Feedback',
+                textPri: textPri,
+                divider: divider,
+                onTap: () => _showSendFeedbackDialog(context),
+              ),
+              Container(height: 1, color: divider),
+              _navRow(
+                icon: Icons.school_outlined,
+                title: 'Getting Started',
+                textPri: textPri,
+                divider: divider,
+                onTap: () => _showGettingStartedGuide(context),
+              ),
+              Container(height: 1, color: divider),
+              _navRow(
+                icon: Icons.info_outline,
+                title: 'About My Expenses',
+                textPri: textPri,
+                divider: divider,
+                showDivider: false,
+                onTap: () => _showAboutInfo(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ═══════════════════════════════════════════
+          // 6) RECURRING TRANSACTIONS
+          // ═══════════════════════════════════════════
+          _sectionCard(
+            card: card,
+            children: [
+              _navRow(
+                icon: Icons.repeat_rounded,
+                title: 'Recurring Transactions',
+                subtitle: 'Manage monthly recurring templates',
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                showDivider: false,
+                onTap: () => _showRecurringTransactionsSheet(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ═══════════════════════════════════════════
+          // 7) LOGOUT
+          // ═══════════════════════════════════════════
+          GestureDetector(
+            onTap: () => _showLogoutDialog(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: isDarkMode ? const Color(0xFF3A2020) : const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.logout, color: _red, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Logout',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _red,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Card(
+          const SizedBox(height: 24),
+
+          // ═══════════════════════════════════════════
+          // 8) FOOTER
+          // ═══════════════════════════════════════════
+          Center(
             child: Column(
               children: [
-                const ListTile(
-                  leading: Icon(Icons.person_outline),
-                  title: Text(
-                    "Profile",
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
+                Text(
+                  'My Expenses v1.0.0',
+                  style: TextStyle(fontSize: 12, color: textSec),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: const Text("Change Name"),
-                  subtitle: Text(userName),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showChangeNameDialog(context, userName),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline),
-                  title: const Text("Change Password"),
-                  subtitle: const Text("••••••••"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showChangePasswordDialog(context),
-                ),
-                const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.tune_rounded),
-                  title: Text(
-                    "Preferences",
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.currency_exchange_outlined),
-                  title: const Text("Change Currency"),
-                  subtitle: Text(userCurrencyOption.label),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showChangeCurrencyDialog(
-                    context,
-                    userCurrencyOption.code,
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.category_outlined),
-                  title: const Text("Edit Categories"),
-                  subtitle: Text(
-                    "Income: ${userIncomeCategories.length} • Expense: ${userExpenseCategories.length}",
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showEditCategoriesDialog(
-                    context,
-                    userIncomeCategories,
-                    userExpenseCategories,
-                  ),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.dark_mode_outlined),
-                  title: const Text("Dark Mode"),
-                  subtitle: const Text("Use dark appearance across the app"),
-                  value: isDarkMode,
-                  onChanged: (_) async {
-                    await ref.read(themeProvider).toggleTheme();
-                  },
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.notifications_active_outlined),
-                  title: const Text("Notifications"),
-                  subtitle: const Text("Enable transaction notifications"),
-                  value: _notificationsEnabled,
-                  onChanged: (value) async {
-                    await NotificationService.setEnabled(value);
-                    if (!mounted) return;
-                    setState(() => _notificationsEnabled = value);
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.savings_outlined),
-                  title: const Text("Budget Goal"),
-                  subtitle: const Text(
-                    "Set monthly expense limit and alert preference",
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showBudgetGoalDialog(context),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.repeat_rounded),
-                  title: const Text("Recurring Transactions"),
-                  subtitle: const Text("Manage monthly recurring templates"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showRecurringTransactionsSheet(context),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.lock_person_outlined),
-                  title: const Text("App Lock"),
-                  subtitle: Text(
-                    authProv.state.appLockEnabled
-                        ? (authProv.state.appLockUseBiometric
-                              ? 'Enabled (PIN + Biometric)'
-                              : 'Enabled (PIN)')
-                        : 'Disabled',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showAppLockDialog(context),
-                ),
-                const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.help_outline_rounded),
-                  title: Text(
-                    "Help & Feedback",
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.feedback_outlined),
-                  title: const Text("Send Feedback"),
-                  subtitle: const Text("Tell us what can be improved"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showSendFeedbackDialog(context),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.school_outlined),
-                  title: const Text("Getting Started"),
-                  subtitle: const Text("Newcomer guide for first-time usage"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showGettingStartedGuide(context),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined),
-                  title: const Text("Privacy"),
-                  subtitle: const Text("How My Expenses handles your data"),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showPrivacyInfo(context),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text("About My Expenses"),
-                  subtitle: const Text(
-                    "App structure, architecture, and how it works",
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showAboutInfo(context),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () {},
+                      child: Text(
+                        'Terms',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textSec,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '·',
+                        style: TextStyle(fontSize: 13, color: textSec),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showPrivacyInfo(context),
+                      child: Text(
+                        'Privacy',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textSec,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '·',
+                        style: TextStyle(fontSize: 13, color: textSec),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showGettingStartedGuide(context),
+                      child: Text(
+                        'Help',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textSec,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          Card(
-            color: Colors.red[50],
-            child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                "Logout",
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.w600,
-                ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  REUSABLE WIDGETS
+  // ═══════════════════════════════════════════════════════════
+
+  Widget _sectionCard({
+    required Color card,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _sectionHeader(IconData icon, String title, Color textPri) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: textPri),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: textPri,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _exportButton({
+    required IconData icon,
+    required String label,
+    required Color field,
+    required Color textPri,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: field,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: textPri),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: textPri,
               ),
-              onTap: () => _showLogoutDialog(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _toggleRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Color textPri,
+    required Color textSec,
+    required Color divider,
+    bool showDivider = true,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: textSec),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: textPri,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 12, color: textSec),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 24,
+            child: Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: Colors.white,
+              activeTrackColor: _indigo,
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: const Color(0xFFD1D5DB),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _navRow({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required Color textPri,
+    Color? textSec,
+    required Color divider,
+    bool showDivider = true,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: textSec ?? _textSecondary),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: textPri,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 12, color: textSec ?? _textSecondary),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 20, color: const Color(0xFF9CA3AF)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  EXPORT HANDLER
+  // ═══════════════════════════════════════════════════════════
+
+  Future<void> _doExport(BuildContext context, String format) async {
+    try {
+      await showAppFeedbackDialog(
+        context,
+        title: 'Export',
+        message: 'Use the export feature from the Dashboard top-bar for full export options.',
+        type: AppFeedbackType.info,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      await showAppFeedbackDialog(
+        context,
+        title: 'Export Failed',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ALL EXISTING DIALOG / SHEET METHODS (preserved)
+  // ═══════════════════════════════════════════════════════════
 
   void _showChangeCurrencyDialog(BuildContext context, String currentCurrency) {
     final normalized = currentCurrency.trim().toUpperCase();
@@ -916,7 +1353,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   tooltip: 'Duplicate now',
                                   icon: const Icon(Icons.copy_rounded),
                                   onPressed: () async {
-                                    await TransactionRepository.duplicateRecurringTransactionNow(
+                                    await TransactionRepository
+                                        .duplicateRecurringTransactionNow(
                                       item['id'].toString(),
                                     );
                                     if (!dialogContext.mounted) return;
@@ -932,11 +1370,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 Switch(
                                   value: isActive,
                                   onChanged: (value) async {
-                                    await TransactionRepository.toggleRecurringTransaction(
+                                    await TransactionRepository
+                                        .toggleRecurringTransaction(
                                       item['id'].toString(),
                                       value,
                                     );
-                                    setState(() => item['is_active'] = value);
+                                    setState(
+                                        () => item['is_active'] = value);
                                   },
                                 ),
                               ],
