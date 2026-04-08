@@ -26,6 +26,9 @@ class AppTheme {
   static const darkAccent = Color(0xFFE0A85A); // brighter accent for dark bg
   static const darkIncome = Color(0xFF4CAF7D); // income on dark
   static const darkExpense = Color(0xFFE05C5C); // expense on dark
+  static const darkBudgetAmber = Color(0xFFF5A623); // budget warning on dark
+  static const budgetGreen = Color(0xFF2D7A4F); // under-budget (= incomeGreen)
+  static const darkBudgetGreen = Color(0xFF4CAF7D); // under-budget on dark
 
   // ─── Backward-compatible aliases ──────────────────────────────────
   // Existing code references these names; keep them wired to the new values.

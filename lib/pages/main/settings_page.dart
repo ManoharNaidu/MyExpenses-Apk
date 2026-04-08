@@ -9,6 +9,7 @@ import '../../core/security/app_lock_service.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../data/transaction_repository.dart';
 import '../../widgets/app_feedback_dialog.dart';
+import 'budget_screen.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -412,11 +413,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 16),
 
           // ═══════════════════════════════════════════
-          // 6) RECURRING TRANSACTIONS
+          // 6) FINANCIAL TOOLS
           // ═══════════════════════════════════════════
           _sectionCard(
             card: card,
             children: [
+              _sectionHeader(Icons.stacked_bar_chart_rounded, 'Financial Tools', textPri),
+              const SizedBox(height: 8),
+              _navRow(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Budget Management',
+                subtitle: 'Set monthly spending limits per category',
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                  );
+                },
+              ),
+              Divider(color: divider, height: 1),
               _navRow(
                 icon: Icons.repeat_rounded,
                 title: 'Recurring Transactions',
