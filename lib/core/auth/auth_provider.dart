@@ -321,7 +321,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     try {
-      debugPrint("🔐 Attempting login for: $email at ${ApiClient.baseUrl}");
+      debugPrint("🔐 Attempting login for: $email, $password at ${ApiClient.baseUrl}");
       final res = await ApiClient.post("/auth/login", {
         "email": email,
         "password": password,

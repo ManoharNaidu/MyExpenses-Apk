@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/theme/theme_provider.dart';
 import 'dashboard_screen.dart';
 import 'history_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_page.dart';
 import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
-import '../../utils/csv_export.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import '../../widgets/add_transaction_modal.dart';
 import '../../core/api/pdf_upload_provider.dart';
@@ -23,19 +24,35 @@ class MainScaffold extends ConsumerStatefulWidget {
   ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends ConsumerState<MainScaffold> {
+class _MainScaffoldState extends ConsumerState<MainScaffold>
+    with TickerProviderStateMixin {
   int index = 0;
   bool _hasCheckedFirstRunGuide = false;
 
   static const _guideSeenPrefix = 'guide_seen_';
 
+  late final AnimationController _fabController;
+  late final Animation<double> _fabScale;
+
   @override
   void initState() {
     super.initState();
     TransactionRepository.ensureInitialized();
+    _fabController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fabScale = CurvedAnimation(parent: _fabController, curve: Curves.elasticOut);
+    _fabController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowFirstRunGuide();
     });
+  }
+
+  @override
+  void dispose() {
+    _fabController.dispose();
+    super.dispose();
   }
 
   Future<void> _maybeShowFirstRunGuide() async {
@@ -68,7 +85,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         icon: Icons.dashboard_rounded,
         title: 'Dashboard page',
         message:
-            'See weekly/monthly summaries, add transactions, upload bank PDF, and review staged rows before final confirmation.',
+            'See monthly summaries, add transactions, upload bank PDF, and review staged rows before final confirmation.',
         cta: 'Next',
       ),
       (
@@ -82,14 +99,14 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         icon: Icons.bar_chart_rounded,
         title: 'Analytics page',
         message:
-            'View weekly and monthly trends for income vs expense. This helps identify spending patterns quickly.',
+            'View balance overview, category drill-down, and 6-month trend analysis.',
         cta: 'Next',
       ),
       (
         icon: Icons.settings_rounded,
         title: 'Settings page',
         message:
-            'Manage profile, categories, currency, newcomer guide, budget goals, recurring transactions, and app lock preferences.',
+            'Manage profile, categories, currency, budget goals, recurring transactions, export data, and app lock.',
         cta: 'Next',
       ),
       (
@@ -98,7 +115,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         message:
             '1) Set your currency.\n'
             '2) Add or edit income/expense categories.\n'
-            '3) Add your first transaction from the Add button.',
+            '3) Add your first transaction from the + button.',
         cta: 'Next',
       ),
       (
@@ -106,16 +123,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         title: 'PDF upload + staged review',
         message:
             'Upload your bank PDF from Dashboard, then review staged rows carefully.\n\n'
-            'Important rule: only selected rows with BOTH Type and Category are queued for confirmation.',
+            'Only rows with BOTH Type and Category set are confirmed.',
         cta: 'Next',
       ),
       (
         icon: Icons.cloud_sync_rounded,
         title: 'You are ready',
         message:
-            'Add/edit/delete updates appear instantly in the app.\n'
-            'Changes are synced in background, or manually via cloud icon.\n'
-            'If pending count is above 0, tap Sync now.',
+            'Changes appear instantly and sync in the background.\n'
+            'If the sync badge shows pending items, tap the cloud icon.',
         cta: 'OK',
       ),
     ];
@@ -127,7 +143,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       barrierDismissible: false,
       barrierLabel: 'Guide',
       barrierColor: Colors.black.withValues(alpha: 0.7),
-      transitionDuration: const Duration(milliseconds: 180),
+      transitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
@@ -155,8 +171,14 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            LinearProgressIndicator(
-                              value: (currentStep + 1) / steps.length,
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: (currentStep + 1) / steps.length,
+                                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                                color: AppTheme.accent,
+                                minHeight: 6,
+                              ),
                             ),
                           ],
                         ),
@@ -166,40 +188,71 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                       alignment: Alignment.center,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(dialogContext).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(14),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          transitionBuilder: (child, animation) => FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.05, 0),
+                                end: Offset.zero,
+                              ).animate(CurvedAnimation(
+                                  parent: animation, curve: Curves.easeOut)),
+                              child: child,
+                            ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(step.icon, color: Colors.white),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      step.title,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      step.message,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
+                          child: Container(
+                            key: ValueKey(currentStep),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Theme.of(dialogContext).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(step.icon, color: Colors.white, size: 26),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        step.title,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        step.message,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.88),
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -213,17 +266,21 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                             if (!isFirst)
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: () =>
-                                      setState(() => currentStep--),
+                                  onPressed: () => setState(() => currentStep--),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.white,
-                                    side: const BorderSide(color: Colors.white),
+                                    side: const BorderSide(color: Colors.white54),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
                                   child: const Text('Back'),
                                 ),
                               ),
                             if (!isFirst) const SizedBox(width: 10),
                             Expanded(
+                              flex: 2,
                               child: FilledButton(
                                 onPressed: () {
                                   if (isLast) {
@@ -232,7 +289,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                                   }
                                   setState(() => currentStep++);
                                 },
-                                child: Text(step.cta),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppTheme.accent,
+                                  foregroundColor: AppTheme.textDark,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(step.cta, style: const TextStyle(fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ],
@@ -246,7 +311,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                         onPressed: () => Navigator.pop(dialogContext),
                         child: const Text(
                           'Skip',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: Colors.white70),
                         ),
                       ),
                     ),
@@ -258,15 +323,17 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(opacity: animation, child: child);
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+          child: child,
+        );
       },
     );
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const SettingsPage()));
   }
 
   Future<void> _showCurrencyPicker() async {
@@ -310,9 +377,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                 final authProv = ref.read(authProvider);
                 try {
                   await authProv.updateCurrency(selectedCurrency);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                  }
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
                 } catch (e) {
                   if (!dialogContext.mounted) return;
                   await showAppFeedbackDialog(
@@ -331,115 +396,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     );
   }
 
-  Future<void> _exportTransactions() async {
-    try {
-      final txs = await TransactionRepository.fetchAll();
-      if (!mounted) return;
-
-      if (txs.isEmpty) {
-        await showAppFeedbackDialog(
-          context,
-          title: 'No Data',
-          message: 'No transactions to export.',
-          type: AppFeedbackType.error,
-        );
-        return;
-      }
-
-      final DateTime? rangeStart;
-      final DateTime? rangeEnd;
-      final useRange = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Export transactions'),
-          content: const Text(
-            'Export all transactions, or choose a date range to export only a subset.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Export all'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Choose date range'),
-            ),
-          ],
-        ),
-      );
-      if (!mounted) return;
-      if (useRange == true) {
-        final now = DateTime.now();
-        final start = await showDatePicker(
-          context: context,
-          initialDate: now.subtract(const Duration(days: 30)),
-          firstDate: DateTime(2020),
-          lastDate: now,
-        );
-        if (!mounted || start == null) return;
-        final end = await showDatePicker(
-          context: context,
-          initialDate: now.isAfter(start) ? now : start,
-          firstDate: start,
-          lastDate: DateTime(2030),
-        );
-        if (!mounted || end == null) return;
-        rangeStart = start;
-        rangeEnd = end;
-      } else {
-        rangeStart = null;
-        rangeEnd = null;
-      }
-
-      List<TransactionModel> toExport = txs;
-      if (rangeStart != null && rangeEnd != null) {
-        final startDay = DateTime(
-          rangeStart.year,
-          rangeStart.month,
-          rangeStart.day,
-        );
-        final endDay = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
-        toExport = txs.where((t) {
-          final d = DateTime(t.date.year, t.date.month, t.date.day);
-          return !d.isBefore(startDay) && !d.isAfter(endDay);
-        }).toList();
-        if (toExport.isEmpty) {
-          await showAppFeedbackDialog(
-            context,
-            title: 'No data in range',
-            message: 'No transactions fall within the selected date range.',
-            type: AppFeedbackType.error,
-          );
-          return;
-        }
-      }
-
-      final result = await CsvExport.exportTransactions(toExport);
-      if (!mounted) return;
-      await showAppFeedbackDialog(
-        context,
-        title: 'Export Ready',
-        message: result.openedShareSheet
-            ? 'Choose where to save/share the CSV file.'
-            : 'Export started successfully.',
-        type: AppFeedbackType.success,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      await showAppFeedbackDialog(
-        context,
-        title: 'Export Failed',
-        message: '$e',
-        type: AppFeedbackType.error,
-      );
-    }
-  }
-
   Future<void> _syncNow() async {
     try {
       await TransactionRepository.syncPendingOperations();
       if (!mounted) return;
-
       final pending = TransactionRepository.pendingOutboxCount;
       await showAppFeedbackDialog(
         context,
@@ -460,24 +420,30 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     }
   }
 
-  final pages = [
-    const DashboardScreen(),
-    const HistoryScreen(),
-    const AnalyticsScreen(),
-    const SettingsPage(),
+  final _pages = const [
+    DashboardScreen(),
+    HistoryScreen(),
+    AnalyticsScreen(),
+    SettingsPage(),
   ];
 
-  final titles = ["My Expenses", "History", "Analytics", "Settings"];
+  final _titles = ['My Expenses', 'History', 'Analytics', 'Settings'];
 
   @override
   Widget build(BuildContext context) {
     _listenToPdfUploads();
+    final isDark = ref.watch(themeProvider).mode == ThemeMode.dark;
     final currency = ref.watch(authProvider).state.effectiveCurrency;
     final currencyOption = currencyFromCode(currency);
     final theme = Theme.of(context);
 
+    final bottomBarColor = isDark ? AppTheme.darkSurface : AppTheme.cream;
+    final bottomBarIconSelected = isDark ? AppTheme.darkTextPrimary : AppTheme.textDark;
+    final bottomBarIconUnselected = isDark ? AppTheme.darkTextSecondary : AppTheme.textSoft;
+
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: isDark ? AppTheme.darkSurface : AppTheme.cream,
         leadingWidth: index == 0 ? 200 : null,
         leading: index == 0
             ? InkWell(
@@ -489,7 +455,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                     children: [
                       Icon(
                         Icons.currency_exchange_rounded,
-                        color: AppTheme.textDark,
+                        color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
                         size: 20,
                       ),
                       const SizedBox(width: 6),
@@ -499,7 +465,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: AppTheme.textDark,
+                            color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
                           ),
                         ),
                       ),
@@ -508,92 +474,123 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                 ),
               )
             : null,
-        title: Text(titles[index]),
-        actions: index != 4
-            ? [
-                StreamBuilder<int>(
-                  stream: TransactionRepository.getOutboxCountStream(),
-                  initialData: TransactionRepository.pendingOutboxCount,
-                  builder: (context, pendingSnap) {
-                    final pending = pendingSnap.data ?? 0;
-
-                    return StreamBuilder<bool>(
-                      stream: TransactionRepository.getSyncingStream(),
-                      initialData: TransactionRepository.isSyncing,
-                      builder: (context, syncingSnap) {
-                        final syncing = syncingSnap.data ?? false;
-                        return Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            IconButton(
-                              tooltip: syncing
-                                  ? 'Syncing...'
-                                  : 'Sync now ($pending pending)',
-                              onPressed: syncing ? null : _syncNow,
-                              icon: Icon(
-                                syncing
-                                    ? Icons.sync_rounded
-                                    : Icons.cloud_upload_outlined,
+        title: Text(
+          _titles[index],
+          style: TextStyle(
+            color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        actions: [
+          // Sync button only
+          StreamBuilder<int>(
+            stream: TransactionRepository.getOutboxCountStream(),
+            initialData: TransactionRepository.pendingOutboxCount,
+            builder: (context, pendingSnap) {
+              final pending = pendingSnap.data ?? 0;
+              return StreamBuilder<bool>(
+                stream: TransactionRepository.getSyncingStream(),
+                initialData: TransactionRepository.isSyncing,
+                builder: (context, syncingSnap) {
+                  final syncing = syncingSnap.data ?? false;
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      IconButton(
+                        tooltip: syncing
+                            ? 'Syncing...'
+                            : 'Sync now ($pending pending)',
+                        onPressed: syncing ? null : _syncNow,
+                        icon: Icon(
+                          syncing
+                              ? Icons.sync_rounded
+                              : Icons.cloud_upload_outlined,
+                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+                        ),
+                      ),
+                      if (!syncing && pending > 0)
+                        Positioned(
+                          right: 6,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              pending > 99 ? '99+' : '$pending',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            if (!syncing && pending > 0)
-                              Positioned(
-                                right: 6,
-                                top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    pending > 99 ? '99+' : '$pending',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-                IconButton(
-                  tooltip: "Export CSV",
-                  onPressed: _exportTransactions,
-                  icon: const Icon(Icons.download_rounded),
-                ),
-              ]
-            : null,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
-      body: pages[index],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 280),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.03),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(index),
+          child: _pages[index],
+        ),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddMenu(context),
-        shape: const CircleBorder(),
-        elevation: 4,
-        child: const Icon(Icons.add_rounded, size: 32),
+      floatingActionButton: ScaleTransition(
+        scale: _fabScale,
+        child: FloatingActionButton(
+          onPressed: () => _showAddMenu(context),
+          backgroundColor: AppTheme.accent,
+          foregroundColor: AppTheme.textDark,
+          elevation: 4,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.add_rounded, size: 32),
+        ),
       ),
       bottomNavigationBar: BottomAppBar(
-        color: AppTheme.cream,
+        color: bottomBarColor,
+        elevation: 8,
+        shadowColor: isDark
+            ? Colors.black.withValues(alpha: 0.5)
+            : Colors.black.withValues(alpha: 0.08),
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(0, Icons.dashboard_rounded, "Home"),
-            _buildNavItem(1, Icons.history_rounded, "History"),
-            const SizedBox(width: 40), // Space for FAB
-            _buildNavItem(2, Icons.bar_chart_rounded, "Analytics"),
-            _buildNavItem(3, Icons.settings_rounded, "Settings"),
+            _buildNavItem(0, Icons.dashboard_rounded, 'Home',
+                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
+            _buildNavItem(1, Icons.history_rounded, 'History',
+                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
+            const SizedBox(width: 40),
+            _buildNavItem(2, Icons.bar_chart_rounded, 'Analytics',
+                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
+            _buildNavItem(3, Icons.settings_rounded, 'Settings',
+                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
           ],
         ),
       ),
@@ -606,50 +603,77 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       if (next.error != null) {
         showAppFeedbackDialog(
           context,
-          title: "Upload Error",
+          title: 'Upload Error',
           message: next.error!,
           type: AppFeedbackType.error,
         );
       } else if (next.lastExtracted != null) {
         showAppFeedbackDialog(
           context,
-          title: "Upload Successful",
+          title: 'Upload Successful',
           message: next.lastExtracted!.isEmpty
-              ? "No transactions were found in that PDF."
-              : "Extracted ${next.lastExtracted!.length} transactions. Review them in the staging area.",
-          type: next.lastExtracted!.isEmpty ? AppFeedbackType.error : AppFeedbackType.success,
+              ? 'No transactions were found in that PDF.'
+              : 'Extracted ${next.lastExtracted!.length} transactions. Review them in the staging area.',
+          type: next.lastExtracted!.isEmpty
+              ? AppFeedbackType.error
+              : AppFeedbackType.success,
         );
       }
     });
   }
 
-  Widget _buildNavItem(int itemIndex, IconData icon, String label) {
+  Widget _buildNavItem(
+    int itemIndex,
+    IconData icon,
+    String label, {
+    required Color selected,
+    required Color unselected,
+  }) {
     final isSelected = index == itemIndex;
-    final theme = Theme.of(context);
-    
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => index = itemIndex),
+        onTap: () {
+          if (index != itemIndex) {
+            setState(() => index = itemIndex);
+          }
+        },
         borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppTheme.textDark : AppTheme.textSoft,
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                color: isSelected ? AppTheme.textDark : AppTheme.textSoft,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: isSelected
+                    ? const EdgeInsets.symmetric(horizontal: 14, vertical: 4)
+                    : EdgeInsets.zero,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppTheme.accent.withValues(alpha: 0.2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  icon,
+                  color: isSelected ? selected : unselected,
+                  size: 22,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                  color: isSelected ? selected : unselected,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -659,7 +683,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      backgroundColor: AppTheme.cream,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
@@ -669,7 +693,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              "Add Transaction",
+              'Add Transaction',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 24),
@@ -679,7 +703,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                   child: _buildMenuAction(
                     context,
                     icon: Icons.edit_note_rounded,
-                    label: "Manual Entry",
+                    label: 'Manual Entry',
                     color: Colors.indigo,
                     onTap: () {
                       Navigator.pop(ctx);
@@ -697,7 +721,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                   child: _buildMenuAction(
                     context,
                     icon: Icons.picture_as_pdf_rounded,
-                    label: "Upload PDF",
+                    label: 'Upload PDF',
                     color: Colors.deepOrange,
                     onTap: () {
                       Navigator.pop(ctx);
@@ -745,14 +769,5 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         ),
       ),
     );
-  }
-
-  Future<void> _showAppFeedbackDialog(
-    BuildContext context, {
-    required String title,
-    required String message,
-    required AppFeedbackType type,
-  }) {
-    return showAppFeedbackDialog(context, title: title, message: message, type: type);
   }
 }

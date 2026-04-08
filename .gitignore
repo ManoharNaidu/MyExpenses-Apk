@@ -49,3 +49,5 @@ app.*.map.json
 assets/.env
 
 ToDo.txt
+
+*.txt

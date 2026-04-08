@@ -75,11 +75,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     // Initials for the avatar
     final initials = userName.isNotEmpty
         ? userName
-            .split(' ')
-            .where((w) => w.isNotEmpty)
-            .take(2)
-            .map((w) => w[0].toUpperCase())
-            .join()
+              .split(' ')
+              .where((w) => w.isNotEmpty)
+              .take(2)
+              .map((w) => w[0].toUpperCase())
+              .join()
         : 'U';
 
     return Container(
@@ -148,8 +148,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                         const SizedBox(height: 6),
                         GestureDetector(
-                          onTap: () =>
-                              _showChangeNameDialog(context, userName),
+                          onTap: () => _showChangeNameDialog(context, userName),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
@@ -214,13 +213,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               // Email display
               if (userEmail.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Text(
-                  userEmail,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: textSec,
-                  ),
-                ),
+                Text(userEmail, style: TextStyle(fontSize: 13, color: textSec)),
               ],
             ],
           ),
@@ -327,7 +320,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             card: card,
             children: [
               _sectionHeader(
-                  Icons.shield_outlined, 'Security & Privacy', textPri),
+                Icons.shield_outlined,
+                'Security & Privacy',
+                textPri,
+              ),
               const SizedBox(height: 8),
               _navRow(
                 icon: Icons.category_outlined,
@@ -354,8 +350,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: 'App Lock',
                 subtitle: authProv.state.appLockEnabled
                     ? (authProv.state.appLockUseBiometric
-                        ? 'Enabled (PIN + Biometric)'
-                        : 'Enabled (PIN)')
+                          ? 'Enabled (PIN + Biometric)'
+                          : 'Enabled (PIN)')
                     : 'Disabled',
                 textPri: textPri,
                 textSec: textSec,
@@ -382,7 +378,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             card: card,
             children: [
               _sectionHeader(
-                  Icons.help_outline_rounded, 'Help & Feedback', textPri),
+                Icons.help_outline_rounded,
+                'Help & Feedback',
+                textPri,
+              ),
               const SizedBox(height: 8),
               _navRow(
                 icon: Icons.feedback_outlined,
@@ -441,7 +440,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
-                color: isDarkMode ? const Color(0xFF3A2020) : const Color(0xFFFEE2E2),
+                color: isDarkMode
+                    ? const Color(0xFF3A2020)
+                    : const Color(0xFFFEE2E2),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -539,10 +540,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   //  REUSABLE WIDGETS
   // ═══════════════════════════════════════════════════════════
 
-  Widget _sectionCard({
-    required Color card,
-    required List<Widget> children,
-  }) {
+  Widget _sectionCard({required Color card, required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -645,10 +643,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 12, color: textSec),
-                ),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: textSec)),
               ],
             ),
           ),
@@ -704,7 +699,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(fontSize: 12, color: textSec ?? _textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSec ?? _textSecondary,
+                      ),
                     ),
                   ],
                 ],
@@ -726,7 +724,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await showAppFeedbackDialog(
         context,
         title: 'Export',
-        message: 'Use the export feature from the Dashboard top-bar for full export options.',
+        message:
+            'Use the export feature from the Dashboard top-bar for full export options.',
         type: AppFeedbackType.info,
       );
     } catch (e) {
@@ -847,9 +846,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 try {
-                  await ref.read(authProvider).updateName(
-                    nameController.text.trim(),
-                  );
+                  await ref
+                      .read(authProvider)
+                      .updateName(nameController.text.trim());
                   if (context.mounted) {
                     Navigator.pop(context);
                     await showAppFeedbackDialog(
@@ -949,10 +948,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 try {
-                  await ref.read(authProvider).updatePassword(
-                    currentPasswordController.text,
-                    newPasswordController.text,
-                  );
+                  await ref
+                      .read(authProvider)
+                      .updatePassword(
+                        currentPasswordController.text,
+                        newPasswordController.text,
+                      );
                   if (context.mounted) {
                     Navigator.pop(context);
                     await showAppFeedbackDialog(
@@ -1147,10 +1148,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ? null
                   : () async {
                       try {
-                        await ref.read(authProvider).updateCategories(
-                          incomeCategories: selectedIncome.toList(),
-                          expenseCategories: selectedExpense.toList(),
-                        );
+                        await ref
+                            .read(authProvider)
+                            .updateCategories(
+                              incomeCategories: selectedIncome.toList(),
+                              expenseCategories: selectedExpense.toList(),
+                            );
                         if (context.mounted) {
                           Navigator.pop(context);
                           await showAppFeedbackDialog(
@@ -1353,8 +1356,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   tooltip: 'Duplicate now',
                                   icon: const Icon(Icons.copy_rounded),
                                   onPressed: () async {
-                                    await TransactionRepository
-                                        .duplicateRecurringTransactionNow(
+                                    await TransactionRepository.duplicateRecurringTransactionNow(
                                       item['id'].toString(),
                                     );
                                     if (!dialogContext.mounted) return;
@@ -1370,13 +1372,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 Switch(
                                   value: isActive,
                                   onChanged: (value) async {
-                                    await TransactionRepository
-                                        .toggleRecurringTransaction(
+                                    await TransactionRepository.toggleRecurringTransaction(
                                       item['id'].toString(),
                                       value,
                                     );
-                                    setState(
-                                        () => item['is_active'] = value);
+                                    setState(() => item['is_active'] = value);
                                   },
                                 ),
                               ],
@@ -1568,9 +1568,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
                       setState(() => isSubmitting = true);
                       try {
-                        await ref.read(authProvider).submitFeedback(
-                          feedbackController.text,
-                        );
+                        await ref
+                            .read(authProvider)
+                            .submitFeedback(feedbackController.text);
                         if (!dialogContext.mounted) return;
                         Navigator.pop(dialogContext);
                         await showAppFeedbackDialog(

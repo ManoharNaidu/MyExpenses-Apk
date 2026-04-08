@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
@@ -43,15 +44,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     TransactionRepository.ensureInitialized();
   }
 
-  /// Returns a short currency symbol for chart labels (e.g. "$", "₹", "€").
   String _currencySymbol(BuildContext context) {
-    final code =
-        ref.read(authProvider).state.effectiveCurrency;
+    final code = ref.read(authProvider).state.effectiveCurrency;
     return currencyFromCode(code).symbol;
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return StreamBuilder<List<TransactionModel>>(
       stream: TransactionRepository.getTransactionsStream(),
       initialData: TransactionRepository.currentTransactions,
@@ -71,22 +72,49 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             icon: Icons.bar_chart_rounded,
             title: 'No data for analytics yet',
             message:
-                'Add transactions or upload a bank PDF to unlock balance, category drill-down, and trend analysis dashboards.',
+                'Add transactions or upload a bank PDF to unlock balance, category drill-down, and trend analysis.',
           );
         }
 
         return Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           child: Column(
             children: [
-              _conceptSelector(context),
+              _conceptSelector(
+                context,
+                theme,
+              ).animate().fadeIn(duration: 300.ms),
               const SizedBox(height: 10),
-              _monthSelector(context, monthOptions),
-              const SizedBox(height: 16),
+              _monthSelector(
+                context,
+                monthOptions,
+              ).animate().fadeIn(delay: 60.ms),
+              const SizedBox(height: 14),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
-                  child: _buildConceptView(context, txs),
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position:
+                          Tween<Offset>(
+                            begin: const Offset(0, 0.04),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                            ),
+                          ),
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(
+                    key: ValueKey(_selectedConcept),
+                    child: _buildConceptView(context, txs),
+                  ),
                 ),
               ),
             ],
@@ -96,8 +124,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _conceptSelector(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget _conceptSelector(BuildContext context, ThemeData theme) {
     final surfaceColor = theme.colorScheme.surfaceContainerHighest;
     final primaryColor = theme.colorScheme.primary;
 
@@ -107,7 +134,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         child: GestureDetector(
           onTap: () => setState(() => _selectedConcept = index),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected ? primaryColor : Colors.transparent,
@@ -121,7 +149,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 fontWeight: FontWeight.w700,
                 color: selected
                     ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.65),
               ),
             ),
           ),
@@ -200,24 +228,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
+  // ── Balance Overview ─────────────────────────────────────────────────────
+
   Widget _balanceOverviewView(
     BuildContext context,
     List<TransactionModel> txs,
     DateTime selectedMonth,
   ) {
     final sym = _currencySymbol(context);
-
     final monthStart = DateTime(selectedMonth.year, selectedMonth.month, 1);
-    final monthEnd =
-        DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
-    final previousMonthStart =
-        DateTime(selectedMonth.year, selectedMonth.month - 1, 1);
+    final monthEnd = DateTime(selectedMonth.year, selectedMonth.month + 1, 0);
+    final previousMonthStart = DateTime(
+      selectedMonth.year,
+      selectedMonth.month - 1,
+      1,
+    );
     final previousMonthEnd = monthStart.subtract(const Duration(days: 1));
 
-    double currentIncome = 0;
-    double currentExpenses = 0;
-    double previousIncome = 0;
-    double previousExpenses = 0;
+    double currentIncome = 0, currentExpenses = 0;
+    double previousIncome = 0, previousExpenses = 0;
 
     for (final tx in txs) {
       if (!tx.date.isBefore(monthStart) && !tx.date.isAfter(monthEnd)) {
@@ -238,17 +267,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     final gaugeMax =
         (currentIncome > currentExpenses ? currentIncome : currentExpenses) *
-                1.15 +
-            1;
-
-    final savingsTarget =
-        currentIncome <= 0 ? 1000.0 : currentIncome * 0.25;
+            1.15 +
+        1;
+    final savingsTarget = currentIncome <= 0 ? 1000.0 : currentIncome * 0.25;
     final netSavings = (currentIncome - currentExpenses)
         .clamp(0, double.infinity)
         .toDouble();
-    final savingsPct =
-        (netSavings / savingsTarget).clamp(0.0, 1.0).toDouble();
-
+    final savingsPct = (netSavings / savingsTarget).clamp(0.0, 1.0).toDouble();
     final monthBars = _buildSpendingStacksForRecentMonths(
       txs,
       months: 4,
@@ -257,6 +282,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return SingleChildScrollView(
       key: const ValueKey('balance_view'),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -321,62 +347,71 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
-            SizedBox(
-              height: 100,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    height: 86,
-                    width: 86,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 10,
-                      backgroundColor:
-                          Colors.black.withValues(alpha: 0.08),
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                    ),
-                  ),
-                  if (gradient != null)
-                    SizedBox(
-                      height: 86,
-                      width: 86,
-                      child: ShaderMask(
-                        shaderCallback: (rect) =>
-                            gradient.createShader(rect),
-                        child: CircularProgressIndicator(
-                          value: progress,
-                          strokeWidth: 10,
-                          backgroundColor: Colors.transparent,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Colors.white,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final size = (constraints.maxWidth * 0.65).clamp(72.0, 100.0);
+                return SizedBox(
+                  height: size,
+                  child: Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          height: size,
+                          width: size,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 9,
+                            backgroundColor: Colors.black.withValues(
+                              alpha: 0.08,
+                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
                           ),
                         ),
-                      ),
-                    ),
-                  Text(
-                    '$symbol${value.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                        if (gradient != null)
+                          SizedBox(
+                            height: size,
+                            width: size,
+                            child: ShaderMask(
+                              shaderCallback: (rect) =>
+                                  gradient.createShader(rect),
+                              child: CircularProgressIndicator(
+                                value: progress,
+                                strokeWidth: 9,
+                                backgroundColor: Colors.transparent,
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        FittedBox(
+                          child: Text(
+                            '$symbol${value.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Icon(
-                  isPositiveTrend
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward,
-                  size: 16,
+                  isPositiveTrend ? Icons.arrow_upward : Icons.arrow_downward,
+                  size: 14,
                   color: isPositiveTrend ? Colors.green : Colors.red,
                 ),
                 const SizedBox(width: 4),
@@ -385,6 +420,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   style: TextStyle(
                     color: isPositiveTrend ? Colors.green : Colors.red,
                     fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -417,17 +453,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     final stacks = <_MonthlyCategoryStack>[];
     for (final monthStart in monthStarts) {
-      final monthEnd =
-          DateTime(monthStart.year, monthStart.month + 1, 0);
-      final values = <String, double>{
-        for (final c in categoryOrder) c: 0,
-      };
+      final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 0);
+      final values = <String, double>{for (final c in categoryOrder) c: 0};
 
       for (final tx in txs) {
         if (tx.type != TxType.expense) continue;
-        if (tx.date.isBefore(monthStart) || tx.date.isAfter(monthEnd)) {
-          continue;
-        }
+        if (tx.date.isBefore(monthStart) || tx.date.isAfter(monthEnd)) continue;
         final normalized = _normalizeSpendingCategory(tx.category);
         values[normalized] = (values[normalized] ?? 0) + tx.amount;
       }
@@ -449,14 +480,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     if (value.contains('transport') ||
         value.contains('fuel') ||
         value.contains('petrol') ||
-        value.contains('taxi')) {
+        value.contains('taxi'))
       return 'Transport';
-    }
     if (value.contains('dining') ||
         value.contains('restaurant') ||
-        value.contains('cafe')) {
+        value.contains('cafe'))
       return 'Dining Out';
-    }
     if (value.contains('saving')) return 'Savings';
     return 'Other';
   }
@@ -466,8 +495,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     List<_MonthlyCategoryStack> bars,
   ) {
     final maxTotal = bars
-        .map((e) =>
-            e.categoryValues.values.fold<double>(0, (a, b) => a + b))
+        .map((e) => e.categoryValues.values.fold<double>(0, (a, b) => a + b))
         .fold<double>(0, (a, b) => a > b ? a : b);
 
     final groups = <BarChartGroupData>[];
@@ -493,7 +521,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             BarChartRodData(
               toY: running,
               rodStackItems: stacks,
-              width: 24,
+              width: 22,
               borderRadius: BorderRadius.circular(4),
             ),
           ],
@@ -503,7 +531,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -511,14 +539,21 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               'Monthly Spending',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             SizedBox(
-              height: 210,
+              height: 180,
               child: BarChart(
                 BarChartData(
                   maxY: maxTotal <= 0 ? 100 : maxTotal * 1.2,
                   barTouchData: BarTouchData(enabled: true),
-                  gridData: const FlGridData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: Colors.grey.withValues(alpha: 0.15),
+                      strokeWidth: 1,
+                    ),
+                  ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     rightTitles: const AxisTitles(
@@ -530,7 +565,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 36,
+                        reservedSize: 32,
                       ),
                     ),
                     bottomTitles: AxisTitles(
@@ -556,7 +591,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 10,
               runSpacing: 6,
@@ -585,7 +620,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -594,23 +629,30 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
+            ClipRRect(
               borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 10,
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              '$symbol${current.toStringAsFixed(0)} to $symbol${target.toStringAsFixed(0)}',
+              '$symbol${current.toStringAsFixed(0)} of $symbol${target.toStringAsFixed(0)}',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 3),
-            Text("You're ${(progress * 100).toStringAsFixed(0)}% there!"),
+            Text(
+              "${(progress * 100).toStringAsFixed(0)}% of your 25% savings target",
+            ),
           ],
         ),
       ),
     );
   }
+
+  // ── Category Drill Down ──────────────────────────────────────────────────
 
   Widget _categoryDrillDownView(
     BuildContext context,
@@ -628,7 +670,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         )
         .toList();
     final totals = <String, double>{};
-
     for (final tx in expenses) {
       final name = _normalizeDrillDownCategory(tx.category);
       totals[name] = (totals[name] ?? 0) + tx.amount;
@@ -648,18 +689,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     final selectedCategory =
         _touchedCategoryIndex >= 0 && _touchedCategoryIndex < top.length
-            ? top[_touchedCategoryIndex].key
-            : null;
+        ? top[_touchedCategoryIndex].key
+        : null;
 
-    final selectedTxs = selectedCategory == null
-        ? <TransactionModel>[]
-        : expenses
-              .where(
-                (t) =>
-                    _normalizeDrillDownCategory(t.category) ==
-                    selectedCategory,
-              )
-              .toList()
+    final selectedTxs =
+        selectedCategory == null
+              ? <TransactionModel>[]
+              : expenses
+                    .where(
+                      (t) =>
+                          _normalizeDrillDownCategory(t.category) ==
+                          selectedCategory,
+                    )
+                    .toList()
           ..sort((a, b) => b.date.compareTo(a.date));
 
     final highest = selectedTxs.isEmpty
@@ -672,6 +714,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return SingleChildScrollView(
       key: const ValueKey('drill_view'),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -682,7 +725,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           const SizedBox(height: 12),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -692,17 +735,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 220,
+                    height: 200,
                     child: PieChart(
                       PieChartData(
-                        centerSpaceRadius: 45,
+                        centerSpaceRadius: 40,
                         pieTouchData: PieTouchData(
                           touchCallback: (event, response) {
-                            final index = response
-                                ?.touchedSection?.touchedSectionIndex;
+                            final index =
+                                response?.touchedSection?.touchedSectionIndex;
                             if (index != null) {
-                              setState(
-                                  () => _touchedCategoryIndex = index);
+                              setState(() => _touchedCategoryIndex = index);
                             }
                           },
                         ),
@@ -713,10 +755,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               title: totalAmount <= 0
                                   ? top[i].key
                                   : '${top[i].key}\n${(top[i].value / totalAmount * 100).toStringAsFixed(0)}%',
-                              radius: _touchedCategoryIndex == i ? 78 : 68,
-                              color: _categoryColors[top[i].key] ??
-                                  Colors.primaries[
-                                      i % Colors.primaries.length],
+                              radius: _touchedCategoryIndex == i ? 74 : 64,
+                              color:
+                                  _categoryColors[top[i].key] ??
+                                  Colors.primaries[i % Colors.primaries.length],
                               titleStyle: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -734,7 +776,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           const SizedBox(height: 12),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -749,17 +791,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       headingRowHeight: 36,
+                      dataRowMinHeight: 40,
+                      dataRowMaxHeight: 48,
                       columns: const [
                         DataColumn(label: Text('Date')),
                         DataColumn(label: Text('Description')),
                         DataColumn(label: Text('Amount')),
-                        DataColumn(label: Text('Location')),
                       ],
                       rows: selectedTxs.take(7).map((tx) {
                         return DataRow(
                           cells: [
-                            DataCell(
-                                Text(DateFormat('MMM d').format(tx.date))),
+                            DataCell(Text(DateFormat('MMM d').format(tx.date))),
                             DataCell(
                               Text(
                                 tx.notes ?? tx.description ?? '-',
@@ -767,9 +809,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            DataCell(Text(
-                                '$sym${tx.amount.toStringAsFixed(2)}')),
-                            const DataCell(Text('-')),
+                            DataCell(
+                              Text('$sym${tx.amount.toStringAsFixed(2)}'),
+                            ),
                           ],
                         );
                       }).toList(),
@@ -778,10 +820,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   const SizedBox(height: 10),
                   Text(
                     highest == null
-                        ? 'No transactions available for this category yet.'
-                        : 'Highest $selectedCategory spending: ${DateFormat('MMM d').format(highest.date)} - '
+                        ? 'No transactions for this category yet.'
+                        : 'Highest: ${DateFormat('MMM d').format(highest.date)} — '
                               '$sym${highest.amount.toStringAsFixed(0)}. '
-                              'Average transaction: $sym${avg.toStringAsFixed(0)}.',
+                              'Avg: $sym${avg.toStringAsFixed(0)}.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -797,19 +839,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   String _normalizeDrillDownCategory(String category) {
     final v = category.toLowerCase();
     if (v.contains('house') || v.contains('rent')) return 'Housing';
-    if (v.contains('grocer') || v.contains('food') || v.contains('dining')) {
+    if (v.contains('grocer') || v.contains('food') || v.contains('dining'))
       return 'Food';
-    }
     if (v.contains('shop')) return 'Shopping';
     if (v.contains('entertain')) return 'Entertainment';
     if (v.contains('transport') ||
         v.contains('fuel') ||
         v.contains('petrol') ||
-        v.contains('taxi')) {
+        v.contains('taxi'))
       return 'Transport';
-    }
     return 'Other';
   }
+
+  // ── Trend Analysis ───────────────────────────────────────────────────────
 
   Widget _trendAnalysisView(
     BuildContext context,
@@ -820,8 +862,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     final months = List.generate(
       6,
-      (i) =>
-          DateTime(selectedMonth.year, selectedMonth.month - (5 - i), 1),
+      (i) => DateTime(selectedMonth.year, selectedMonth.month - (5 - i), 1),
     );
     final incomeByMonth = List<double>.filled(months.length, 0);
     final expenseByMonth = List<double>.filled(months.length, 0);
@@ -832,8 +873,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     };
 
     for (final tx in txs) {
-      final key =
-          '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}';
+      final key = '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}';
       final idx = monthIndexMap[key];
       if (idx == null) continue;
       if (tx.type == TxType.income) {
@@ -863,12 +903,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         FlSpot(i.toDouble(), netByMonth[i]),
     ];
 
-    final maxIncome =
-        incomeByMonth.fold<double>(0, (a, b) => a > b ? a : b);
-    final maxExpense =
-        expenseByMonth.fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY =
-        (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2 + 50;
+    final maxIncome = incomeByMonth.fold<double>(0, (a, b) => a > b ? a : b);
+    final maxExpense = expenseByMonth.fold<double>(0, (a, b) => a > b ? a : b);
+    final maxY = (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2 + 50;
 
     final avgIncome =
         incomeByMonth.fold<double>(0, (a, b) => a + b) / months.length;
@@ -889,113 +926,121 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     }
     final topCategories = expenseByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final totalExpense =
-        topCategories.fold<double>(0, (sum, e) => sum + e.value);
-    final topExpense =
-        topCategories.isEmpty ? 'N/A' : topCategories.first.key;
+    final totalExpense = topCategories.fold<double>(
+      0,
+      (sum, e) => sum + e.value,
+    );
+    final topExpense = topCategories.isEmpty ? 'N/A' : topCategories.first.key;
 
     return SingleChildScrollView(
       key: const ValueKey('trend_view'),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Financial Trends • Last 6 months to ${DateFormat('MMM yyyy').format(selectedMonth)}',
+            'Trends • Last 6 months to ${DateFormat('MMM yyyy').format(selectedMonth)}',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: SizedBox(
-                height: 270,
-                child: LineChart(
-                  LineChartData(
-                    minX: 0,
-                    maxX: (months.length - 1).toDouble(),
-                    minY: 0,
-                    maxY: maxY <= 0 ? 200 : maxY,
-                    gridData: const FlGridData(show: true),
-                    borderData: FlBorderData(show: false),
-                    lineTouchData: const LineTouchData(enabled: true),
-                    titlesData: FlTitlesData(
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 38,
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 1,
-                          getTitlesWidget: (v, meta) {
-                            final idx = v.toInt();
-                            if (idx < 0 || idx >= months.length) {
-                              return const SizedBox.shrink();
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                DateFormat('MMM').format(months[idx]),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: incomeSpots,
-                        isCurved: true,
-                        color: Colors.blue,
-                        barWidth: 3,
-                        dotData: const FlDotData(show: true),
-                      ),
-                      LineChartBarData(
-                        spots: expenseSpots,
-                        isCurved: true,
-                        color: Colors.orange,
-                        barWidth: 3,
-                        dotData: const FlDotData(show: true),
-                      ),
-                      LineChartBarData(
-                        spots: netSpots,
-                        color: Colors.transparent,
-                        barWidth: 0,
-                        dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: Colors.blue.withValues(alpha: 0.15),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                      'Avg. Monthly Income: $sym${avgIncome.toStringAsFixed(0)}'),
-                  const SizedBox(height: 4),
-                  Text(
-                      'Avg. Monthly Expenses: $sym${avgExpense.toStringAsFixed(0)}'),
-                  const SizedBox(height: 4),
-                  Text('Top Expense: $topExpense'),
+                  Row(
+                    children: [
+                      _legendItem('Income', Colors.blue),
+                      const SizedBox(width: 16),
+                      _legendItem('Expenses', Colors.orange),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 220,
+                    child: LineChart(
+                      LineChartData(
+                        minX: 0,
+                        maxX: (months.length - 1).toDouble(),
+                        minY: 0,
+                        maxY: maxY <= 0 ? 200 : maxY,
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          getDrawingHorizontalLine: (value) => FlLine(
+                            color: Colors.grey.withValues(alpha: 0.15),
+                            strokeWidth: 1,
+                          ),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        lineTouchData: const LineTouchData(enabled: true),
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          leftTitles: const AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 36,
+                            ),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 1,
+                              getTitlesWidget: (v, meta) {
+                                final idx = v.toInt();
+                                if (idx < 0 || idx >= months.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    DateFormat('MMM').format(months[idx]),
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: incomeSpots,
+                            isCurved: true,
+                            color: Colors.blue,
+                            barWidth: 3,
+                            dotData: const FlDotData(show: true),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: Colors.blue.withValues(alpha: 0.06),
+                            ),
+                          ),
+                          LineChartBarData(
+                            spots: expenseSpots,
+                            isCurved: true,
+                            color: Colors.orange,
+                            barWidth: 3,
+                            dotData: const FlDotData(show: true),
+                          ),
+                          LineChartBarData(
+                            spots: netSpots,
+                            color: Colors.transparent,
+                            barWidth: 0,
+                            dotData: const FlDotData(show: false),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: Colors.blue.withValues(alpha: 0.1),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1003,7 +1048,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           const SizedBox(height: 10),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Avg Monthly Income: $sym${avgIncome.toStringAsFixed(0)}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Avg Monthly Expenses: $sym${avgExpense.toStringAsFixed(0)}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Top Expense Category: $topExpense'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1011,14 +1076,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     'Top 5 Categories',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   for (final e in topCategories.take(5))
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
                         children: [
                           SizedBox(
-                            width: 110,
+                            width: 100,
                             child: Text(
                               e.key,
                               style: const TextStyle(
@@ -1027,23 +1092,33 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             ),
                           ),
                           Expanded(
-                            child: LinearProgressIndicator(
-                              value: totalExpense <= 0
-                                  ? 0
-                                  : e.value / totalExpense,
-                              minHeight: 9,
+                            child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              color: _categoryColors[e.key] ??
-                                  Colors.blueGrey,
+                              child: LinearProgressIndicator(
+                                value: totalExpense <= 0
+                                    ? 0
+                                    : e.value / totalExpense,
+                                minHeight: 9,
+                                color:
+                                    _categoryColors[e.key] ?? Colors.blueGrey,
+                                backgroundColor:
+                                    (_categoryColors[e.key] ?? Colors.blueGrey)
+                                        .withValues(alpha: 0.15),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            totalExpense <= 0
-                                ? '0%'
-                                : '${(e.value / totalExpense * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600),
+                          SizedBox(
+                            width: 36,
+                            child: Text(
+                              totalExpense <= 0
+                                  ? '0%'
+                                  : '${(e.value / totalExpense * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.end,
+                            ),
                           ),
                         ],
                       ),
@@ -1083,7 +1158,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 class _MonthlyCategoryStack {
   final String label;
   final Map<String, double> categoryValues;
-
   const _MonthlyCategoryStack({
     required this.label,
     required this.categoryValues,
