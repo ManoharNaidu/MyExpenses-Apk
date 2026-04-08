@@ -1,37 +1,42 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Sandstone Palette
-  static const cream = Color(0xFFF7F3EE);
-  static const card = Color(0xFFFFFFFF);
-  static const textDark = Color(0xFF3F3A36);
-  static const textSoft = Color(0xFF6E645C);
-  static const accent = Color(0xFFD9A86C);
-  static const accentDark = Color(0xFFB38B59);
+  // ─── Light-mode palette ───────────────────────────────────────────
+  static const cream = Color(0xFFF7F3EE); // scaffold background
+  static const card = Color(0xFFFFFFFF); // card surface
+  static const fieldFill = Color(0xFFF3EDE5); // text field fill
+  static const accent = Color(0xFFC9924A); // primary CTA, FAB, highlights
+  static const accentDark = Color(0xFFA67338); // pressed accent, links
+  static const textDark = Color(0xFF2B2420); // primary text
+  static const textSoft = Color(0xFF7A6355); // secondary text
+  static const divider = Color(0xFFEDE8E3); // separators
+  static const incomeGreen = Color(0xFF2D7A4F); // income amounts, positive
+  static const expenseRed = Color(0xFFC0392B); // expense amounts, negative
+  static const budgetAmber = Color(0xFFD97706); // budget warning 80%+
 
-  // Aliases
-  static const sandCream = cream;
-  static const sandBeige = accent;
-  static const coffeeDark = textDark;
-  static const earthSoft = textSoft;
+  // ─── Dark-mode palette (warm-tinted) ──────────────────────────────
+  static const darkBg = Color(0xFF141210); // scaffold — warm near-black
+  static const darkSurface = Color(0xFF1E1B18); // AppBar, BottomBar
+  static const darkCard = Color(0xFF272320); // cards, list items
+  static const darkElevated = Color(0xFF312D2A); // dialogs, sheets
+  static const darkField = Color(0xFF3A3531); // input backgrounds
+  static const darkTextPri = Color(0xFFF0EBE4); // primary text — warm white
+  static const darkTextSec = Color(0xFF9A8A7A); // secondary text — warm grey
+  static const darkDivider = Color(0xFF332F2B); // separators
+  static const darkAccent = Color(0xFFE0A85A); // brighter accent for dark bg
+  static const darkIncome = Color(0xFF4CAF7D); // income on dark
+  static const darkExpense = Color(0xFFE05C5C); // expense on dark
+
+  // ─── Backward-compatible aliases ──────────────────────────────────
+  // Existing code references these names; keep them wired to the new values.
+  static const darkTextPrimary = darkTextPri;
+  static const darkTextSecondary = darkTextSec;
+  static const darkBottomBar = darkSurface;
   static const white = card;
 
-  // Design system
-  static const indigo = Color(0xFF4F46E5);
-  static const indigoLight = Color(0xFFE0E7FF);
-  static const green = Color(0xFF22C55E);
-  static const red = Color(0xFFEF4444);
-
-  // Dark palette
-  static const darkBg = Color(0xFF141210);
-  static const darkSurface = Color(0xFF1E1C1A);
-  static const darkCard = Color(0xFF2B2825);
-  static const darkField = Color(0xFF3A3633);
-  static const darkTextPrimary = Color(0xFFF5F0EB);
-  static const darkTextSecondary = Color(0xFF9A8E84);
-  static const darkDivider = Color(0xFF3A3633);
-  static const darkBottomBar = Color(0xFF1E1C1A);
-
+  // ═══════════════════════════════════════════════════════════════════
+  // Light ThemeData
+  // ═══════════════════════════════════════════════════════════════════
   static ThemeData get theme {
     final base = ThemeData(
       useMaterial3: true,
@@ -67,11 +72,11 @@ class AppTheme {
         shadowColor: Colors.black.withValues(alpha: 0.06),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: accent,
         foregroundColor: textDark,
         elevation: 4,
-        shape: const CircleBorder(),
+        shape: CircleBorder(),
       ),
       bottomAppBarTheme: const BottomAppBarThemeData(
         color: cream,
@@ -102,8 +107,22 @@ class AppTheme {
           );
         }),
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: fieldFill,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: divider),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: divider),
+        ),
+        labelStyle: const TextStyle(color: textSoft),
+        hintStyle: TextStyle(color: textSoft.withValues(alpha: 0.6)),
+      ),
       dividerTheme: const DividerThemeData(
-        color: Color(0xFFEDE8E3),
+        color: divider,
         thickness: 1,
       ),
       textTheme: base.textTheme.copyWith(
@@ -117,11 +136,16 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: textDark,
         ),
+        bodyLarge: const TextStyle(fontSize: 16, color: textDark),
         bodyMedium: const TextStyle(fontSize: 14, color: textSoft),
+        bodySmall: const TextStyle(fontSize: 12, color: textSoft),
       ),
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // Dark ThemeData
+  // ═══════════════════════════════════════════════════════════════════
   static ThemeData get darkTheme {
     final base = ThemeData(
       useMaterial3: true,
@@ -130,10 +154,10 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: accent,
         brightness: Brightness.dark,
-        primary: accent,
-        secondary: accent,
+        primary: darkAccent,
+        secondary: darkAccent,
         surface: darkCard,
-        onSurface: darkTextPrimary,
+        onSurface: darkTextPri,
         surfaceContainerHighest: darkField,
       ),
       fontFamily: 'Roboto',
@@ -146,14 +170,14 @@ class AppTheme {
     );
 
     return base.copyWith(
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: darkSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: darkTextPrimary),
-        titleTextStyle: const TextStyle(
-          color: darkTextPrimary,
+        iconTheme: IconThemeData(color: darkTextPri),
+        titleTextStyle: TextStyle(
+          color: darkTextPri,
           fontSize: 17,
           fontWeight: FontWeight.w700,
           fontFamily: 'Roboto',
@@ -172,11 +196,10 @@ class AppTheme {
         shape: CircleBorder(),
       ),
       bottomAppBarTheme: const BottomAppBarThemeData(
-        color: darkSurface,
+        color: darkSurface, // ← DARK MODE FOOTER FIX
         elevation: 8,
         shadowColor: Color(0x40000000),
       ),
-      dividerTheme: const DividerThemeData(color: darkDivider, thickness: 1),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: darkField,
@@ -188,23 +211,24 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: darkDivider),
         ),
-        labelStyle: const TextStyle(color: darkTextSecondary),
-        hintStyle: TextStyle(color: darkTextSecondary.withValues(alpha: 0.6)),
+        labelStyle: const TextStyle(color: darkTextSec),
+        hintStyle: TextStyle(color: darkTextSec.withValues(alpha: 0.6)),
       ),
+      dividerTheme: const DividerThemeData(color: darkDivider, thickness: 1),
       textTheme: base.textTheme.copyWith(
         titleLarge: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w800,
-          color: darkTextPrimary,
+          color: darkTextPri,
         ),
         titleMedium: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w700,
-          color: darkTextPrimary,
+          color: darkTextPri,
         ),
-        bodyMedium: const TextStyle(fontSize: 14, color: darkTextSecondary),
-        bodyLarge: const TextStyle(fontSize: 16, color: darkTextPrimary),
-        bodySmall: const TextStyle(fontSize: 12, color: darkTextSecondary),
+        bodyLarge: const TextStyle(fontSize: 16, color: darkTextPri),
+        bodyMedium: const TextStyle(fontSize: 14, color: darkTextSec),
+        bodySmall: const TextStyle(fontSize: 12, color: darkTextSec),
       ),
     );
   }
