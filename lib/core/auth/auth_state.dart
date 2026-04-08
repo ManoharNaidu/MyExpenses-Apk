@@ -10,6 +10,7 @@ class AuthState {
   final List<String>? userIncomeCategories;
   final List<String>? userExpenseCategories;
   final String? userCurrency;
+  final String? persona;
   final bool appLockEnabled;
   final bool appLockUseBiometric;
   final String? appLockPinHash;
@@ -40,6 +41,7 @@ class AuthState {
     this.userIncomeCategories,
     this.userExpenseCategories,
     this.userCurrency,
+    this.persona,
     this.appLockEnabled = false,
     this.appLockUseBiometric = false,
     this.appLockPinHash,
@@ -57,6 +59,7 @@ class AuthState {
     userIncomeCategories: null,
     userExpenseCategories: null,
     userCurrency: null,
+    persona: null,
     appLockEnabled: false,
     appLockUseBiometric: false,
     appLockPinHash: null,
@@ -74,6 +77,7 @@ class AuthState {
     List<String>? userIncomeCategories,
     List<String>? userExpenseCategories,
     String? userCurrency,
+    String? persona,
     bool? appLockEnabled,
     bool? appLockUseBiometric,
     String? appLockPinHash,
@@ -91,6 +95,7 @@ class AuthState {
       userExpenseCategories:
           userExpenseCategories ?? this.userExpenseCategories,
       userCurrency: userCurrency ?? this.userCurrency,
+      persona: persona ?? this.persona,
       appLockEnabled: appLockEnabled ?? this.appLockEnabled,
       appLockUseBiometric: appLockUseBiometric ?? this.appLockUseBiometric,
       appLockPinHash: appLockPinHash ?? this.appLockPinHash,

@@ -146,6 +146,7 @@ class AuthProvider extends ChangeNotifier {
     List<String>? userIncomeCategories,
     List<String>? userExpenseCategories,
     String? userCurrency,
+    String? persona,
     bool? appLockEnabled,
     bool? appLockUseBiometric,
     String? appLockPinHash,
@@ -163,6 +164,7 @@ class AuthProvider extends ChangeNotifier {
       userExpenseCategories:
           userExpenseCategories ?? _state.userExpenseCategories,
       userCurrency: userCurrency ?? _state.userCurrency,
+      persona: persona ?? _state.persona,
       appLockEnabled: appLockEnabled ?? _state.appLockEnabled,
       appLockUseBiometric: appLockUseBiometric ?? _state.appLockUseBiometric,
       appLockPinHash: appLockPinHash ?? _state.appLockPinHash,
@@ -182,6 +184,7 @@ class AuthProvider extends ChangeNotifier {
       'email': _state.userEmail,
       'name': _state.userName,
       'currency': _state.userCurrency,
+      'persona': _state.persona,
       'user_categories': userCategories,
       'categories': _state.userCategories ?? <String>[],
       'income_category': _state.userIncomeCategories ?? <String>[],
@@ -216,6 +219,7 @@ class AuthProvider extends ChangeNotifier {
         userEmail: data['email']?.toString(),
         userName: data['name']?.toString(),
         userCurrency: data['currency']?.toString(),
+        persona: data['persona']?.toString(),
         userCategories: categoriesList,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
@@ -262,6 +266,7 @@ class AuthProvider extends ChangeNotifier {
         userEmail: data["email"],
         userName: data["name"],
         userCurrency: data["currency"]?.toString(),
+        persona: data["persona"]?.toString(),
         userCategories: categoriesList,
         userIncomeCategories: incomeCategories,
         userExpenseCategories: expenseCategories,
@@ -382,6 +387,7 @@ class AuthProvider extends ChangeNotifier {
     List<String>? categories,
     List<String>? incomeCategories,
     List<String>? expenseCategories,
+    String? persona,
   }) async {
     final resolvedCategories = categories ?? <String>[];
     final resolvedIncomeCategories = incomeCategories ?? <String>[];
@@ -389,7 +395,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       debugPrint(
-        "📦 Onboarding with income: $resolvedIncomeCategories expense: $resolvedExpenseCategories categories: $resolvedCategories",
+        "📦 Onboarding with income: $resolvedIncomeCategories expense: $resolvedExpenseCategories categories: $resolvedCategories persona: $persona",
       );
 
       final cleanedIncome = resolvedIncomeCategories
@@ -406,7 +412,10 @@ class AuthProvider extends ChangeNotifier {
         expenseCategories: cleanedExpense,
       );
 
-      final payload = {"categories": categoryPairs};
+      final payload = {
+        "categories": categoryPairs,
+        if (persona != null) "persona": persona,
+      };
 
       debugPrint("📤 Sending payload: $payload");
 
@@ -420,6 +429,7 @@ class AuthProvider extends ChangeNotifier {
         userCategories: resolvedCategories,
         userIncomeCategories: resolvedIncomeCategories,
         userExpenseCategories: resolvedExpenseCategories,
+        persona: persona,
       );
       await _saveProfileCache();
       notifyListeners();
