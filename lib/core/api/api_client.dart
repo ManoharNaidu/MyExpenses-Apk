@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../storage/secure_storage.dart';
 
 /// Legacy compat response to avoid rewriting 20+ callers right now.
@@ -36,10 +37,30 @@ parseJson(String text) {
 class ApiClient {
   static final Dio _dio = _createDio();
   static String get _baseUrl {
-    const envUrl = String.fromEnvironment('API_URL', defaultValue: '');
+    final envUrl = dotenv.get('API_URL', fallback: '');
+    
+    // In debug mode, we should default to localhost unless explicitly overridden to something else valid.
+    // This prevents accidental connection to production if the asset bundle is stale or misconfigured.
+    // if (kDebugMode) {
+    //   if (envUrl.isEmpty || envUrl.contains('onrender.com')) {
+    //     String target = 'localhost';
+        
+    //     // Android Emulator specific fix
+    //     if (defaultTargetPlatform == TargetPlatform.android) {
+    //       target = '10.0.2.2';
+    //     }
+        
+    //     final resolvedUrl = 'http://$target:8000/api/v1';
+    //     debugPrint('DEBUG MODE: Overriding $envUrl to local backend: $resolvedUrl');
+    //     return resolvedUrl;
+    //   }
+    // }
+
     if (envUrl.isNotEmpty) return envUrl;
     return 'https://my-expenses-backend-fastapi.onrender.com/api/v1';
   }
+
+  static String get baseUrl => _baseUrl;
 
   static const String genericUnexpectedMessage = 'Something unexpected happened. Please try again.';
 
@@ -104,9 +125,25 @@ class ApiClient {
     throw ApiException(extractErrorMessage(response, fallbackMessage: fallbackMessage), statusCode: response.statusCode);
   }
 
-  static LegacyHttpResponse _wrap(Response? response) {
-    if (response == null) return LegacyHttpResponse(500, '{"message": "$genericUnexpectedMessage"}');
+  static LegacyHttpResponse _wrap(Response? response, {String? defaultMessage}) {
+    if (response == null) {
+      final msg = defaultMessage ?? genericUnexpectedMessage;
+      return LegacyHttpResponse(500, '{"message": "$msg"}');
+    }
     return LegacyHttpResponse(response.statusCode ?? 500, response.data?.toString() ?? '');
+  }
+
+  static String _dioErrorToMessage(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'Connection timed out. Please check your internet.';
+      case DioExceptionType.connectionError:
+        return 'No internet connection or server is unreachable.';
+      default:
+        return genericUnexpectedMessage;
+    }
   }
 
   static Future<LegacyHttpResponse> post(String path, Object? body, {bool requiresAuth = true}) async {
@@ -114,7 +151,8 @@ class ApiClient {
       final res = await _dio.post(path, data: body, options: Options(extra: requiresAuth ? {} : {'noAuth': true}));
       return _wrap(res);
     } on DioException catch (e) {
-      return _wrap(e.response);
+      if (e.response != null) return _wrap(e.response);
+      return _wrap(null, defaultMessage: _dioErrorToMessage(e));
     }
   }
 
@@ -123,7 +161,8 @@ class ApiClient {
       final res = await _dio.get(path);
       return _wrap(res);
     } on DioException catch (e) {
-      return _wrap(e.response);
+      if (e.response != null) return _wrap(e.response);
+      return _wrap(null, defaultMessage: _dioErrorToMessage(e));
     }
   }
 

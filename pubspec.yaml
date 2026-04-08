@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.5.1
+  flutter_dotenv: ^5.1.0
   dio: ^5.4.3
   connectivity_plus: ^6.1.1
   flutter_secure_storage: ^9.0.0
@@ -46,6 +47,7 @@ flutter:
 
   assets:
     - assets/icon/
+    - .env
   # NOTE: .env is intentionally NOT listed here.
   # API_URL is injected at build time via --dart-define=API_URL=https://...
   # or flutter_dotenv loads it from .env in DEBUG builds only.
