@@ -175,9 +175,9 @@ class ApiClient {
     }
   }
 
-  static Future<LegacyHttpResponse> delete(String path) async {
+  static Future<LegacyHttpResponse> delete(String path, {Object? data}) async {
     try {
-      final res = await _dio.delete(path);
+      final res = await _dio.delete(path, data: data);
       return _wrap(res);
     } on DioException catch (e) {
       return _wrap(e.response);

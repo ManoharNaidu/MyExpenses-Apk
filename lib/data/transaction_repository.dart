@@ -776,6 +776,20 @@ class TransactionRepository {
     await _refreshLoadedWindow();
   }
 
+  /// Delete a recurring transaction.
+  static Future<void> deleteRecurringTransaction(String id) async {
+    final res = await ApiClient.delete('/recurring-transactions/$id');
+    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to delete recurring transaction.');
+  }
+
+  /// Manually trigger duplication of a recurring transaction now.
+  static Future<void> duplicateRecurringTransactionNow(String id) async {
+    final res = await ApiClient.post('/recurring-transactions/$id/duplicate-now', null);
+    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to duplicate recurring transaction.');
+    // Refresh the local transaction list since a new transaction was likely created.
+    unawaited(loadInitial(forceRefresh: true));
+  }
+
   static void clearUserCache() {
     if (_currentUserId == null) return;
     unawaited(SecureStorage.deleteKey(_cacheKey));

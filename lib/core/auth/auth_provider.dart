@@ -555,6 +555,49 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateEmail(String password, String newEmail) async {
+    try {
+      debugPrint("📧 Updating email to: $newEmail");
+      final res = await ApiClient.put("/settings/email", {
+        "password": password,
+        "email": newEmail,
+      });
+
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to update email',
+      );
+
+      _state = _copyState(userEmail: newEmail);
+      await _saveProfileCache();
+      notifyListeners();
+      debugPrint("✅ Email updated successfully");
+    } catch (e) {
+      debugPrint("❌ Error updating email: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAccount(String password) async {
+    try {
+      debugPrint("⚠️ Deleting account...");
+      final res = await ApiClient.delete("/auth/account", data: {
+        "password": password,
+      });
+
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to delete account',
+      );
+
+      await logout();
+      debugPrint("✅ Account deleted and user logged out");
+    } catch (e) {
+      debugPrint("❌ Error deleting account: $e");
+      rethrow;
+    }
+  }
+
   Future<void> updateAppLockSettings({
     required bool enabled,
     required bool useBiometric,
