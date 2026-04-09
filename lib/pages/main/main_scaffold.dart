@@ -437,7 +437,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     final currencyOption = currencyFromCode(currency);
     final theme = Theme.of(context);
 
-    final bottomBarColor = isDark ? AppTheme.darkSurface : AppTheme.cream;
+    final bottomBarColor = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFFDFCF2);
     final bottomBarIconSelected = isDark ? AppTheme.darkTextPrimary : AppTheme.textDark;
     final bottomBarIconUnselected = isDark ? AppTheme.darkTextSecondary : AppTheme.textSoft;
 
@@ -540,14 +540,14 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
         ],
       ),
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 280),
+        duration: const Duration(milliseconds: 300),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
           child: SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(0, 0.03),
+              begin: const Offset(0, 0.05),
               end: Offset.zero,
             ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
             child: child,
@@ -639,7 +639,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
         },
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
@@ -647,20 +647,20 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 300),
                 padding: isSelected
-                    ? const EdgeInsets.symmetric(horizontal: 14, vertical: 4)
+                    ? const EdgeInsets.symmetric(horizontal: 16, vertical: 6)
                     : EdgeInsets.zero,
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppTheme.accent.withValues(alpha: 0.2)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Icon(
                   icon,
                   color: isSelected ? selected : unselected,
-                  size: 22,
+                  size: 24,
                 ),
               ),
               const SizedBox(height: 2),
