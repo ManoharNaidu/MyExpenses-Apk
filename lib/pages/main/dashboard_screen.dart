@@ -497,115 +497,130 @@ class _MonthlyOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPositive = monthNet >= 0;
-    final netColor = isPositive
-        ? const Color(0xFF22C55E)
-        : const Color(0xFFEF4444);
+    final now = DateTime.now();
+    final daysPassed = now.day;
+    final dailyAvg = monthExpense / daysPassed;
+    final savingsRate = monthIncome > 0
+        ? ((monthIncome - monthExpense) / monthIncome) * 100
+        : 0.0;
 
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
+        gradient: isDark
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  cardColor,
+                  cardColor.withValues(alpha: 0.8),
+                ],
+              )
+            : null,
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          // Header section
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.transparent,
+            ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppTheme.accent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '${_months[now.month - 1]} ${now.year}',
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: AppTheme.accentDark,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
                 const Spacer(),
                 Icon(
-                  Icons.calendar_month_rounded,
-                  size: 18,
-                  color: textSecondary,
+                  Icons.auto_graph_rounded,
+                  size: 20,
+                  color: textSecondary.withValues(alpha: 0.8),
                 ),
               ],
             ),
           ),
 
-          // Net balance
+          // Main Balance section
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'This Month (Net)',
-                  style: TextStyle(fontSize: 13, color: textSecondary),
+                  'NET DISPOSABLE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: textSecondary,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       formatMoney(monthNet),
                       style: TextStyle(
-                        fontSize: 34,
+                        fontSize: 36,
                         fontWeight: FontWeight.w900,
                         color: netColor,
                         letterSpacing: -1,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: netColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: netColor.withValues(alpha: 0.2),
+                          width: 1,
                         ),
-                        decoration: BoxDecoration(
-                          color: netColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isPositive
-                                  ? Icons.trending_up_rounded
-                                  : Icons.trending_down_rounded,
-                              size: 14,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                            size: 12,
+                            color: netColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${savingsRate.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
                               color: netColor,
                             ),
-                            const SizedBox(width: 3),
-                            Text(
-                              isPositive ? 'Positive' : 'Deficit',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: netColor,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -614,31 +629,59 @@ class _MonthlyOverviewCard extends StatelessWidget {
             ),
           ),
 
-          Divider(color: dividerColor, height: 1, thickness: 1),
-
-          // Income / Expense row
+          const SizedBox(height: 24),
+          
+          // Stats Grid
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
               children: [
-                Expanded(
-                  child: _StatPill(
-                    label: 'Income',
-                    value: formatMoney(monthIncome),
-                    icon: Icons.arrow_downward_rounded,
-                    color: const Color(0xFF22C55E),
-                    isDark: isDark,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Income',
+                        value: formatMoney(monthIncome),
+                        icon: Icons.south_west_rounded,
+                        color: const Color(0xFF22C55E),
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Expenses',
+                        value: formatMoney(monthExpense),
+                        icon: Icons.north_east_rounded,
+                        color: const Color(0xFFEF4444),
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatPill(
-                    label: 'Expenses',
-                    value: formatMoney(monthExpense),
-                    icon: Icons.arrow_upward_rounded,
-                    color: const Color(0xFFEF4444),
-                    isDark: isDark,
-                  ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Daily Avg',
+                        value: formatMoney(dailyAvg),
+                        icon: Icons.today_rounded,
+                        color: AppTheme.accent,
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatPill(
+                        label: 'Savings %',
+                        value: '${savingsRate.toStringAsFixed(1)}%',
+                        icon: Icons.savings_rounded,
+                        color: const Color(0xFF0EA5E9),
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -692,9 +735,9 @@ class _StatPill extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isDark
-                        ? AppTheme.darkTextSecondary
+                        ? Colors.white.withValues(alpha: 0.5)
                         : AppTheme.textSoft,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 2),
