@@ -1,19 +1,31 @@
 const predefinedIncomeCategories = [
+  "Salary",
+  "Part-time Job",
+  "Bonus",
+  "Allowance",
+  "Scholarship",
+  "Investment",
+  "Freelance",
+  "Gifts",
   "Transfer",
-  "Job",
-  "Deposit",
+  "Other",
 ];
 
 const predefinedExpenseCategories = [
-  "Room Rent",
+  "Rent/Mortgage",
+  "Groceries",
+  "Dining Out",
   "Transport",
   "Utilities",
-  "Medical",
-  "Food",
-  "Groceries",
+  "Health/Medical",
   "Education",
-  "Shopping",
+  "Insurance",
   "Entertainment",
+  "Social",
+  "Shopping",
+  "Subscriptions",
+  "Phone/Internet",
+  "Travel",
   "Sports",
   "Misc",
 ];
@@ -22,3 +34,4 @@ const predefinedCategories = [
   ...predefinedIncomeCategories,
   ...predefinedExpenseCategories,
 ];
+

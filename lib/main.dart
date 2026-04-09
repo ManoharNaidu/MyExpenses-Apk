@@ -33,8 +33,8 @@ class MyExpensesApp extends ConsumerWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'My Expenses',
-      theme: AppTheme.theme,
-      darkTheme: AppTheme.darkTheme,
+      theme: themeProv.lightTheme,
+      darkTheme: themeProv.darkTheme,
       themeMode: themeProv.mode,
       home: const RootRouter(),
     );

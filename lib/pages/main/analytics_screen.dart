@@ -9,6 +9,8 @@ import '../../core/constants/currencies.dart';
 import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/health_score_gauge.dart';
+
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -249,6 +251,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     double previousIncome = 0, previousExpenses = 0;
 
     for (final tx in txs) {
+      if (tx.description == null) continue;
       if (!tx.date.isBefore(monthStart) && !tx.date.isAfter(monthEnd)) {
         if (tx.type == TxType.income) {
           currentIncome += tx.amount;
@@ -290,7 +293,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             'Financial Balance • ${DateFormat('MMMM yyyy').format(selectedMonth)}',
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          HealthScoreGauge(transactions: txs, selectedDate: selectedMonth),
+          const SizedBox(height: 20),
+
           Row(
             children: [
               Expanded(
@@ -457,6 +463,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       final values = <String, double>{for (final c in categoryOrder) c: 0};
 
       for (final tx in txs) {
+        if (tx.description == null) continue;
         if (tx.type != TxType.expense) continue;
         if (tx.date.isBefore(monthStart) || tx.date.isAfter(monthEnd)) continue;
         final normalized = _normalizeSpendingCategory(tx.category);
@@ -665,6 +672,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         .where(
           (e) =>
               e.type == TxType.expense &&
+              e.description != null &&
               e.date.year == selectedMonth.year &&
               e.date.month == selectedMonth.month,
         )
@@ -873,6 +881,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     };
 
     for (final tx in txs) {
+      if (tx.description == null) continue;
       final key = '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}';
       final idx = monthIndexMap[key];
       if (idx == null) continue;
@@ -915,6 +924,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final selectedMonthExpenses = txs.where(
       (e) =>
           e.type == TxType.expense &&
+          e.description != null &&
           e.date.year == selectedMonth.year &&
           e.date.month == selectedMonth.month,
     );
