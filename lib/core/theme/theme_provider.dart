@@ -23,65 +23,115 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final primaryColor = isDark ? AppColors.sapphirePrimary : AppColors.auroraPrimary;
-    final backgroundColor = isDark ? AppColors.sapphireDark : AppColors.auroraLight;
-    final surfaceColor = isDark ? AppColors.sapphireSurface : AppColors.auroraSurface;
+    
+    // --- Lucid Ledger Foundation ---
+    final backgroundColor = isDark ? AppColors.obsidianAbyss : const Color(0xFFFAFBFD);
+    final surfaceColor = isDark ? AppColors.midnightVoid : Colors.white;
+    final primaryColor = AppColors.pureMint;
+    final secondaryColor = AppColors.coralPop;
+
+    final baseTextTheme = isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme;
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       primaryColor: primaryColor,
+      scaffoldBackgroundColor: backgroundColor,
+      
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: brightness,
         primary: primaryColor,
+        secondary: secondaryColor,
         surface: surfaceColor,
         background: backgroundColor,
+        onSurface: isDark ? Colors.white.withOpacity(0.9) : Colors.black87,
       ),
-      scaffoldBackgroundColor: backgroundColor,
-      textTheme: GoogleFonts.outfitTextTheme(
-        isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
+
+      // --- Lucid Typography: Manrope (Headlines) & Inter (Body) ---
+      textTheme: GoogleFonts.interTextTheme(baseTextTheme).copyWith(
+        displayLarge: GoogleFonts.manrope(textStyle: baseTextTheme.displayLarge),
+        displayMedium: GoogleFonts.manrope(textStyle: baseTextTheme.displayMedium),
+        displaySmall: GoogleFonts.manrope(textStyle: baseTextTheme.displaySmall),
+        headlineLarge: GoogleFonts.manrope(textStyle: baseTextTheme.headlineLarge, fontWeight: FontWeight.bold),
+        headlineMedium: GoogleFonts.manrope(textStyle: baseTextTheme.headlineMedium, fontWeight: FontWeight.bold),
+        headlineSmall: GoogleFonts.manrope(textStyle: baseTextTheme.headlineSmall, fontWeight: FontWeight.w600),
+        titleLarge: GoogleFonts.manrope(textStyle: baseTextTheme.titleLarge, fontWeight: FontWeight.w600),
+        titleMedium: GoogleFonts.manrope(textStyle: baseTextTheme.titleMedium, fontWeight: FontWeight.w500),
       ).apply(
-        bodyColor: isDark ? Colors.white : Colors.black87,
+        bodyColor: isDark ? Colors.white.withOpacity(0.9) : Colors.black87,
         displayColor: isDark ? Colors.white : Colors.black87,
       ),
+
+      // --- Shape Rule: 24px Roundness ---
+      // --- No-Line Rule: Zero BorderSide ---
       cardTheme: CardThemeData(
         color: surfaceColor,
-        elevation: isDark ? 0 : 2,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: isDark 
-            ? BorderSide(color: Colors.white.withOpacity(0.05), width: 1)
-            : BorderSide.none,
+          side: BorderSide.none, // Enforcing No-Line Rule
         ),
       ),
+
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
-        titleTextStyle: GoogleFonts.outfit(
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.manrope(
           color: isDark ? Colors.white : Colors.black87,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+        ),
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : Colors.black87,
         ),
       ),
+
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: isDark 
-          ? AppColors.sapphireDark.withOpacity(0.8)
-          : AppColors.auroraLight.withOpacity(0.8),
-        indicatorColor: primaryColor.withOpacity(0.1),
-        labelTextStyle: MaterialStateProperty.all(
-          GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500),
-        ),
+        backgroundColor: isDark ? AppColors.obsidianAbyss.withOpacity(0.8) : Colors.white.withOpacity(0.8),
+        indicatorColor: primaryColor.withOpacity(0.12),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+        height: 72,
+        elevation: 0,
+        iconTheme: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
+            return IconThemeData(color: primaryColor, size: 26);
+          }
+          return IconThemeData(color: isDark ? Colors.white38 : Colors.black38, size: 24);
+        }),
       ),
+
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 4,
+        foregroundColor: isDark ? AppColors.obsidianAbyss : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 0, // Atmospheric: No harsh shadows
+      ),
+
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none, // No-Line Rule
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.3), width: 2), // Ghost border for focus
+        ),
       ),
     );
   }
+
+
 
   Future<void> _loadTheme() async {
     final saved = await SecureStorage.readString(_themeKey);

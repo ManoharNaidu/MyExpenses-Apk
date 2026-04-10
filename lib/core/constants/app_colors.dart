@@ -1,39 +1,51 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Sapphire Night (Dark Theme)
-  static const Color sapphireDark = Color(0xFF1A1B2E); // Deep background
-  static const Color sapphireSurface = Color(0xFF25263D); // Card surface
-  static const Color sapphirePrimary = Color(0xFF6C5CE7); // Deep violet
-  static const Color sapphireSecondary = Color(0xFFA29BFE); // Light lavender
-  static const Color sapphireAccent = Color(0xFF00D2D3); // Cyan/Teal
+  // --- The Lucid Ledger: Obsidian Foundation ---
+  static const Color obsidianAbyss = Color(0xFF0A0C14);      // Atmospheric Background
+  static const Color midnightVoid = Color(0xFF121421);       // Surface Depth
   
-  // Aurora Pearl (Light Theme)
-  static const Color auroraLight = Color(0xFFF8F9FD); // Soft white background
-  static const Color auroraSurface = Colors.white; // Pure white surface
-  static const Color auroraPrimary = Color(0xFF4834D4); // Bold royal blue
-  static const Color auroraSecondary = Color(0xFF686DE0); // Mid blue
-  static const Color auroraAccent = Color(0xFFF0932B); // Vibrant orange
+  // --- The Lucid Ledger: Financial Prism Accents ---
+  static const Color pureMint = Color(0xFF00CFB4);           // Primary Highlight (Accent 1)
+  static const Color coralPop = Color(0xFFFF6B6B);           // Secondary Glow (Accent 2)
+  static const Color electricGold = Color(0xFFFFD166);       // Tertiary Detail
   
-  // Semantic Colors
-  static const Color expense = Color(0xFFFF7675); // Soft red
-  static const Color income = Color(0xFF55E6C1); // Soft green
+  // --- Functional Semantic Colors (Lucid Palette) ---
+  static const Color expense = Color(0xFFFF6B6B);            // Coral (Mapped to Accent 2)
+  static const Color income = Color(0xFF00CFB4);             // Mint (Mapped to Accent 1)
+  static const Color warning = Color(0xFFFFD166);            // Gold
   
-  // Glassmorphism Helpers
-  static Color glassWhite(double opacity) => Colors.white.withOpacity(opacity);
-  static Color glassBlack(double opacity) => Colors.black.withOpacity(opacity);
-  static Color glassSapphire(double opacity) => sapphireDark.withOpacity(opacity);
+  // --- Ambient Effects & Overlays ---
+  static Color glass(Color base, double opacity) => base.withOpacity(opacity);
   
-  // Gradients
-  static const LinearGradient sapphireGradient = LinearGradient(
-    colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
+  static const List<Color> prismMesh = [
+    Color(0xFF00CFB4), // Mint
+    Color(0xFFFF6B6B), // Coral
+    Color(0xFF121421), // Midnight
+    Color(0xFF0A0C14), // Obsidian
+  ];
+
+  // --- Glass & Gradient Rule (135° Mint to Coral) ---
+  static const LinearGradient lucidGradient = LinearGradient(
+    colors: [Color(0xFF00CFB4), Color(0xFFFF6B6B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 1.0],
+    transform: GradientRotation(2.35619), // 135 degrees (~2.36 radians)
+  );
+
+  static const LinearGradient glassOverlay = LinearGradient(
+    colors: [
+      Color(0x1A00CFB4), // 10% Mint
+      Color(0x1AFF6B6B), // 10% Coral
+    ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFF00D2D3), Color(0xFF54A0FF)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+  static const LinearGradient darkFade = LinearGradient(
+    colors: [Colors.transparent, Color(0xFF0A0C14)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
   );
 }

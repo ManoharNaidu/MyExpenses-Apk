@@ -221,7 +221,7 @@ class _ScoreBreakdownSheet extends StatelessWidget {
     
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.sapphireSurface : Colors.white,
+        color: isDark ? AppColors.midnightVoid : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: const EdgeInsets.all(24),
