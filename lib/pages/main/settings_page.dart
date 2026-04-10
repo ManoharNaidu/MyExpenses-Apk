@@ -9,6 +9,8 @@ import '../../core/security/app_lock_service.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../data/transaction_repository.dart';
 import '../../widgets/app_feedback_dialog.dart';
+import '../../models/transaction_model.dart';
+import '../../utils/csv_export.dart';
 import 'budget_screen.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -739,21 +741,85 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _doExport(BuildContext context, String format) async {
     try {
-      await showAppFeedbackDialog(
-        context,
-        title: 'Export',
-        message:
-            'Use the export feature from the Dashboard top-bar for full export options.',
-        type: AppFeedbackType.info,
-      );
+      final txs = await TransactionRepository.fetchAll();
+      if (!context.mounted) return;
+
+      if (txs.isEmpty) {
+        await showAppFeedbackDialog(context,
+            title: 'No Data',
+            message: 'No transactions to export.',
+            type: AppFeedbackType.error);
+        return;
+      }
+
+      // Optional date range prompt
+      final useRange = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+                title: Text('Export ${format.toUpperCase()}'),
+                content: const Text('Export all transactions or select a date range?'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('All')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Date range')),
+                ],
+              ));
+      if (!context.mounted) return;
+
+      List<TransactionModel> toExport = txs;
+      if (useRange == true) {
+        final now = DateTime.now();
+        final start = await showDatePicker(
+          context: context,
+          initialDate: now.subtract(const Duration(days: 30)),
+          firstDate: DateTime(2020),
+          lastDate: now,
+        );
+        if (!context.mounted || start == null) return;
+        final end = await showDatePicker(
+          context: context,
+          initialDate: now,
+          firstDate: start,
+          lastDate: DateTime(2030),
+        );
+        if (!context.mounted || end == null) return;
+
+        final startDay = DateTime(start.year, start.month, start.day);
+        final endDay = DateTime(end.year, end.month, end.day);
+        toExport = txs.where((t) {
+          final d = DateTime(t.date.year, t.date.month, t.date.day);
+          return !d.isBefore(startDay) && !d.isAfter(endDay);
+        }).toList();
+
+        if (toExport.isEmpty) {
+          if (!context.mounted) return;
+          await showAppFeedbackDialog(context,
+              title: 'No data in range',
+              message: 'No transactions fall within the selected date range.',
+              type: AppFeedbackType.error);
+          return;
+        }
+      }
+
+      final result = await CsvExport.exportTransactions(toExport);
+      if (!context.mounted) return;
+      await showAppFeedbackDialog(context,
+          title: format == 'pdf' ? 'Export Ready' : 'CSV Exported',
+          message: format == 'pdf'
+              ? 'Select a PDF app from the share sheet to save as PDF.'
+              : result.openedShareSheet
+                  ? 'Choose where to save the CSV file.'
+                  : 'CSV exported successfully.',
+          type: AppFeedbackType.success);
     } catch (e) {
       if (!context.mounted) return;
-      await showAppFeedbackDialog(
-        context,
-        title: 'Export Failed',
-        message: '$e',
-        type: AppFeedbackType.error,
-      );
+      await showAppFeedbackDialog(context,
+          title: 'Export Failed',
+          message: '$e',
+          type: AppFeedbackType.error);
     }
   }
 
