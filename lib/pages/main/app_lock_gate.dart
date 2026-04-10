@@ -86,15 +86,29 @@ class _AppLockGateState extends ConsumerState<AppLockGate> {
                   children: [
                     const Icon(Icons.lock_rounded, size: 36),
                     const SizedBox(height: 10),
-                    const Text(
-                      'App Locked',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
+                    const SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        'App Locked',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text('Enter your PIN or use biometric to continue.'),
+                    const SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        'Enter your PIN or use biometric to continue.',
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     const SizedBox(height: 14),
                     TextField(
                       controller: _pinController,

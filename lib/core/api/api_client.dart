@@ -38,7 +38,7 @@ parseJson(String text) {
 class ApiClient {
   static final Dio _dio = _createDio();
   static String get _baseUrl {
-    final envUrl = dotenv.get('API_URL', fallback: '');
+    final envUrl = dotenv.get('API_URL', fallback: '').trim();
 
     // // In debug mode, we default to localhost unless explicitly overridden.
     // if (kDebugMode && (envUrl.isEmpty || envUrl.contains('onrender.com'))) {
@@ -47,7 +47,7 @@ class ApiClient {
     //   debugPrint('DEBUG MODE: Overriding $envUrl to local backend: $localUrl');
     //   return localUrl;
     // }
-
+    debugPrint('Base URL: $envUrl');
     if (envUrl.isNotEmpty) return envUrl;
     return 'https://my-expenses-backend-fastapi.onrender.com/api/v1';
   }
