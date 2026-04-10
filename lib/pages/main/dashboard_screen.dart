@@ -304,13 +304,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   label: 'Income',
                   value: '$currencySymbol${income.toStringAsFixed(2)}',
                   icon: Icons.south_west_rounded,
+                  bgColor: isDark
+                      ? const Color(0xFF20372C)
+                      : const Color(0xFFE7F6EA),
+                  accentColor: isDark
+                      ? const Color(0xFF4CAF7D)
+                      : const Color(0xFF2D7A4F),
+                  iconBg: isDark
+                      ? const Color(0xFF2D4537)
+                      : const Color(0xFFCDEFD8),
                 ),
               ),
+              const SizedBox(width: 10),
               Expanded(
                 child: _metricItem(
                   label: 'Expenses',
                   value: '$currencySymbol${expenses.toStringAsFixed(2)}',
                   icon: Icons.north_east_rounded,
+                  bgColor: isDark
+                      ? const Color(0xFF342127)
+                      : const Color(0xFFFBE9EC),
+                  accentColor: isDark
+                      ? const Color(0xFFE05C5C)
+                      : const Color(0xFFC0392B),
+                  iconBg: isDark
+                      ? const Color(0xFF4B2C32)
+                      : const Color(0xFFF3CDD3),
                 ),
               ),
             ],
@@ -323,13 +342,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   label: 'Daily Average',
                   value: '$currencySymbol${dailyAverage.toStringAsFixed(2)}',
                   icon: Icons.insights_rounded,
+                  bgColor: isDark
+                      ? const Color(0xFF31261D)
+                      : const Color(0xFFF7ECDD),
+                  accentColor: isDark
+                      ? const Color(0xFFE0A85A)
+                      : const Color(0xFFC9924A),
+                  iconBg: isDark
+                      ? const Color(0xFF433627)
+                      : const Color(0xFFF0DEBE),
                 ),
               ),
+              const SizedBox(width: 10),
               Expanded(
                 child: _metricItem(
                   label: 'Savings',
                   value: '$currencySymbol${savings.toStringAsFixed(2)}',
                   icon: Icons.savings_rounded,
+                  bgColor: isDark
+                      ? const Color(0xFF1F3041)
+                      : const Color(0xFFE8F3FB),
+                  accentColor: isDark
+                      ? const Color(0xFF74B9E8)
+                      : const Color(0xFF2F9AD6),
+                  iconBg: isDark
+                      ? const Color(0xFF2C4054)
+                      : const Color(0xFFD3E8F7),
                 ),
               ),
             ],
@@ -343,34 +381,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required String label,
     required String value,
     required IconData icon,
+    required Color bgColor,
+    required Color accentColor,
+    required Color iconBg,
   }) {
-    return Row(
-      children: [
-        Icon(icon, size: 16),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                value,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accentColor.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+            child: Icon(icon, size: 18, color: accentColor),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: accentColor.withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: accentColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

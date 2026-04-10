@@ -19,6 +19,7 @@ class BudgetManagementScreen extends ConsumerStatefulWidget {
 class _BudgetManagementScreenState
     extends ConsumerState<BudgetManagementScreen> {
   bool _alertsEnabled = true;
+  final Map<String, TextEditingController> _limitControllers = {};
 
   @override
   void initState() {
@@ -27,6 +28,25 @@ class _BudgetManagementScreenState
     CategoryBudgetRepository.setCurrentUserId(userId);
     CategoryBudgetRepository.ensureInitialized();
     TransactionRepository.ensureInitialized();
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _limitControllers.values) {
+      controller.dispose();
+    }
+    _limitControllers.clear();
+    super.dispose();
+  }
+
+  TextEditingController _controllerForBudget(CategoryBudget budget) {
+    return _limitControllers.putIfAbsent(budget.category, () {
+      return TextEditingController(
+        text: budget.monthlyLimit > 0
+            ? budget.monthlyLimit.toStringAsFixed(2)
+            : '',
+      );
+    });
   }
 
   @override
@@ -93,11 +113,7 @@ class _BudgetManagementScreenState
                     )
                     .fold<double>(0, (sum, tx) => sum + tx.amount);
 
-                final controller = TextEditingController(
-                  text: budget.monthlyLimit > 0
-                      ? budget.monthlyLimit.toStringAsFixed(2)
-                      : '',
-                );
+                final controller = _controllerForBudget(budget);
 
                 return ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -114,6 +130,7 @@ class _BudgetManagementScreenState
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        textInputAction: TextInputAction.done,
                         decoration: InputDecoration(
                           labelText: 'Monthly limit',
                           prefixText: '$symbol ',
