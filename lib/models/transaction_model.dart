@@ -50,11 +50,21 @@ class TransactionModel {
   }
 
   Map<String, dynamic> toJson() {
+    String? sanitizeText(String? value, {int max = 2000}) {
+      if (value == null) return null;
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      return trimmed.length <= max ? trimmed : trimmed.substring(0, max);
+    }
+
+    final safeDescription = sanitizeText(description, max: 2000);
+    final safeNotes = sanitizeText(notes, max: 2000);
+
     final map = {
       // Don't send user_id - backend will extract it from JWT token
       'date': date.toIso8601String(),
-      'description': description,
-      'notes': notes,
+      'description': safeDescription,
+      'notes': safeNotes,
       'type': type == TxType.income ? 'income' : 'expense',
       'category': category,
       'amount': amount,

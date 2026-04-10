@@ -149,10 +149,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ),
                       title: Text(tx.category),
-                      subtitle: Text(
-                        tx.notes?.trim().isNotEmpty == true
-                            ? tx.notes!
-                            : DateFormat('dd MMM yyyy').format(tx.date),
+                      subtitle: Builder(
+                        builder: (_) {
+                          final source = (tx.notes ?? tx.description ?? '')
+                              .trim();
+                          final shortDescription = source.length <= 50
+                              ? source
+                              : '${source.substring(0, 50)}...';
+                          if (shortDescription.isEmpty) {
+                            return Text(
+                              DateFormat('dd MMM yyyy').format(tx.date),
+                            );
+                          }
+                          return Text(
+                            shortDescription,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
                       ),
                       trailing: Text(
                         '${tx.type == TxType.income ? '+' : '-'}$currencySymbol${tx.amount.toStringAsFixed(2)}',

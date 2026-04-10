@@ -26,6 +26,9 @@ class TransactionTile extends StatelessWidget {
     final amt = (isIncome ? '+' : '-') + tx.amount.toStringAsFixed(2);
     final date = DateFormat('dd MMM yyyy').format(tx.date);
     final notes = (tx.notes ?? tx.description ?? '').trim();
+    final shortNotes = notes.length <= 50
+        ? notes
+        : '${notes.substring(0, 50)}...';
 
     return Card(
       child: ListTile(
@@ -50,7 +53,9 @@ class TransactionTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${notes.isNotEmpty ? " • $notes" : ""}',
+          '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${shortNotes.isNotEmpty ? " • $shortNotes" : ""}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: Text(
           amt,
