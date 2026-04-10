@@ -19,6 +19,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   String categoryFilter = "All";
   String monthFilter = "All"; // yyyy-mm
   String searchQuery = "";
+  final List<String> selectedTags = [];
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -79,6 +80,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         t.amount.toString().contains(searchQuery);
   }
 
+  bool _matchesTags(TransactionModel t) {
+    if (selectedTags.isEmpty) return true;
+    return selectedTags.every((tag) => t.tags.contains(tag));
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<TransactionModel>>(
@@ -121,13 +127,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               "${t.date.year}-${t.date.month.toString().padLeft(2, '0')}";
           final monthOk = monthFilter == "All" || mKey == monthFilter;
           final searchOk = _matchesSearch(t);
+          final tagOk = _matchesTags(t);
 
-          return typeOk && catOk && monthOk && searchOk;
+          return typeOk && catOk && monthOk && searchOk && tagOk;
         }).toList();
 
         final hasMore = TransactionRepository.hasMore;
         final isLoading = TransactionRepository.isLoading;
         final isOnline = TransactionRepository.isOnline;
+        final allTags = TransactionRepository.allTags;
 
         final listItemCount =
             filtered.length + ((hasMore || isLoading) ? 1 : 0);
@@ -211,6 +219,34 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         setState(() => categoryFilter = v ?? "All"),
                     decoration: const InputDecoration(labelText: "Category"),
                   ),
+                  if (allTags.isNotEmpty) const SizedBox(height: 10),
+                  if (allTags.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: allTags
+                            .map(
+                              (tag) => FilterChip(
+                                label: Text('#$tag'),
+                                selected: selectedTags.contains(tag),
+                                onSelected: (v) {
+                                  setState(() {
+                                    if (v) {
+                                      if (!selectedTags.contains(tag)) {
+                                        selectedTags.add(tag);
+                                      }
+                                    } else {
+                                      selectedTags.remove(tag);
+                                    }
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   if (!isOnline)
                     Container(
@@ -262,6 +298,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                 monthFilter = "All";
                                 _searchController.clear();
                                 searchQuery = "";
+                                selectedTags.clear();
                               });
                             },
                           )

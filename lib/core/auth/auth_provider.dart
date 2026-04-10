@@ -7,6 +7,7 @@ import '../storage/secure_storage.dart';
 import 'auth_state.dart';
 import '../../data/transaction_repository.dart';
 import '../../data/staged_draft_repository.dart';
+import '../../data/category_budget_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final authProvider = ChangeNotifierProvider<AuthProvider>((ref) {
@@ -241,6 +242,7 @@ class AuthProvider extends ChangeNotifier {
       );
       TransactionRepository.setCurrentUserId(_state.userId);
       StagedDraftRepository.setCurrentUserId(_state.userId);
+      CategoryBudgetRepository.setCurrentUserId(_state.userId);
       notifyListeners();
       return true;
     } catch (_) {
@@ -292,6 +294,7 @@ class AuthProvider extends ChangeNotifier {
 
       TransactionRepository.setCurrentUserId(_state.userId);
       StagedDraftRepository.setCurrentUserId(_state.userId);
+      CategoryBudgetRepository.setCurrentUserId(_state.userId);
       await _saveProfileCache();
       if (notify) notifyListeners();
       return true;
@@ -396,6 +399,7 @@ class AuthProvider extends ChangeNotifier {
     await SecureStorage.deleteKey(_profileKey);
     TransactionRepository.setCurrentUserId(null);
     StagedDraftRepository.setCurrentUserId(null);
+    CategoryBudgetRepository.setCurrentUserId(null);
     _state = AuthState.initial().copyWith(isLoading: false);
     notifyListeners();
   }

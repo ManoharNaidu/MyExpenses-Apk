@@ -19,6 +19,7 @@ class TransactionModel {
   double amount;
   String? recurringId;
   bool repeatMonthly;
+  List<String> tags;
 
   TransactionModel({
     this.id,
@@ -31,7 +32,21 @@ class TransactionModel {
     required this.amount,
     this.recurringId,
     this.repeatMonthly = false,
+    this.tags = const [],
   });
+
+  static List<String> extractTags(String? text) {
+    if (text == null || text.isEmpty) return const [];
+    final regex = RegExp(r'#(\w+)');
+    final tags = regex
+        .allMatches(text)
+        .map((m) => (m.group(1) ?? '').toLowerCase())
+        .where((t) => t.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return tags;
+  }
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     final date = DateTime.parse(json['date']);
@@ -46,6 +61,9 @@ class TransactionModel {
       amount: (json['amount'] as num).toDouble(),
       recurringId: json['recurring_id']?.toString(),
       repeatMonthly: (json['repeat_monthly'] as bool?) ?? false,
+      tags: (json['tags'] as List<dynamic>? ?? [])
+          .map((e) => e.toString().toLowerCase())
+          .toList(),
     );
   }
 
@@ -68,6 +86,7 @@ class TransactionModel {
       'type': type == TxType.income ? 'income' : 'expense',
       'category': category,
       'amount': amount,
+      'tags': tags,
     };
     if (id != null) {
       map['id'] = id;

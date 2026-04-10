@@ -26,6 +26,7 @@ class TransactionRepository {
 
   static final List<TransactionModel> _transactions = [];
   static final List<OutboxOperation> _outbox = [];
+  static final Map<String, Set<String>> _tagIndex = {};
   static List<String> _incomeCategories = [];
   static List<String> _expenseCategories = [];
 
@@ -50,6 +51,7 @@ class TransactionRepository {
       List.unmodifiable(_expenseCategories);
   static Stream<int> getOutboxCountStream() => _outboxCountController.stream;
   static Stream<bool> getSyncingStream() => _syncingController.stream;
+  static List<String> get allTags => _tagIndex.keys.toList()..sort();
 
   /// Set current user and bootstrap repository state.
   static void setCurrentUserId(String? userId) {
@@ -240,7 +242,19 @@ class TransactionRepository {
   }
 
   static void _emitCurrent() {
+    _rebuildTagIndex();
     _streamController.add(List.unmodifiable(_transactions));
+  }
+
+  static void _rebuildTagIndex() {
+    _tagIndex.clear();
+    for (final tx in _transactions) {
+      final txId = tx.id;
+      if (txId == null || txId.isEmpty) continue;
+      for (final tag in tx.tags) {
+        _tagIndex.putIfAbsent(tag, () => <String>{}).add(txId);
+      }
+    }
   }
 
   static void _emitOutboxCount() {
@@ -468,6 +482,9 @@ class TransactionRepository {
 
   static Future<void> add(TransactionModel tx) async {
     final localId = tx.id ?? 'local_${DateTime.now().microsecondsSinceEpoch}';
+    final extractedTags = TransactionModel.extractTags(
+      tx.notes ?? tx.description,
+    );
     final localTx = TransactionModel(
       id: localId,
       userId: tx.userId,
@@ -479,6 +496,7 @@ class TransactionRepository {
       amount: tx.amount,
       recurringId: tx.recurringId,
       repeatMonthly: tx.repeatMonthly,
+      tags: extractedTags,
     );
 
     _transactions.insert(0, localTx);
@@ -546,10 +564,24 @@ class TransactionRepository {
   }
 
   static Future<void> update(TransactionModel tx) async {
+    final updatedTx = TransactionModel(
+      id: tx.id,
+      userId: tx.userId,
+      date: tx.date,
+      description: tx.description,
+      notes: tx.notes,
+      type: tx.type,
+      category: tx.category,
+      amount: tx.amount,
+      recurringId: tx.recurringId,
+      repeatMonthly: tx.repeatMonthly,
+      tags: TransactionModel.extractTags(tx.notes ?? tx.description),
+    );
+
     if (tx.id != null) {
       final index = _transactions.indexWhere((item) => item.id == tx.id);
       if (index != -1) {
-        _transactions[index] = tx;
+        _transactions[index] = updatedTx;
         _emitCurrent();
         await _saveToCache();
       }
@@ -558,7 +590,8 @@ class TransactionRepository {
     final txId = tx.id;
     if (txId == null) return;
 
-    final payload = Map<String, dynamic>.from(tx.toJson())..remove('id');
+    final payload = Map<String, dynamic>.from(updatedTx.toJson())
+      ..remove('id');
     if (_isLocalId(txId)) {
       final idx = _outbox.indexWhere(
         (op) =>

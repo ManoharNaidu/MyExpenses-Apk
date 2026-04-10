@@ -10,6 +10,7 @@ import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/health_score_gauge.dart';
+import '../../widgets/net_worth_card.dart';
 
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
@@ -295,6 +296,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           const SizedBox(height: 16),
           HealthScoreGauge(transactions: txs, selectedDate: selectedMonth),
+          const SizedBox(height: 14),
+          FutureBuilder<NetWorthResult>(
+            future: NetWorthService.calculate(txs, selectedMonth),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return NetWorthCard(
+                result: snapshot.data!,
+                currencySymbol: sym,
+                isDark: Theme.of(context).brightness == Brightness.dark,
+              );
+            },
+          ),
           const SizedBox(height: 20),
 
           Row(

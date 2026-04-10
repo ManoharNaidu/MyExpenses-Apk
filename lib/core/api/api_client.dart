@@ -207,7 +207,7 @@ class ApiClient {
     }
   }
 
-  static Future<LegacyHttpResponse> put(String path, Map body) async {
+  static Future<LegacyHttpResponse> put(String path, Object? body) async {
     try {
       final res = await _dio.put(path, data: body);
       return _wrap(res);

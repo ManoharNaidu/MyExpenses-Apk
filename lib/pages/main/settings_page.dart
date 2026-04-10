@@ -8,10 +8,11 @@ import '../../core/notifications/notification_service.dart';
 import '../../core/security/app_lock_service.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../data/transaction_repository.dart';
+import '../../services/weekly_digest_service.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import '../../models/transaction_model.dart';
 import '../../utils/csv_export.dart';
-import 'budget_screen.dart';
+import 'budget_management_screen.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -22,17 +23,25 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
+  bool _digestEnabled = true;
 
   @override
   void initState() {
     super.initState();
     _loadNotificationPreference();
+    _loadDigestPreference();
   }
 
   Future<void> _loadNotificationPreference() async {
     final enabled = await NotificationService.isEnabled();
     if (!mounted) return;
     setState(() => _notificationsEnabled = enabled);
+  }
+
+  Future<void> _loadDigestPreference() async {
+    final enabled = await WeeklyDigestService.isEnabled();
+    if (!mounted) return;
+    setState(() => _digestEnabled = enabled);
   }
 
   // ─── Design system colors (Figma-aligned) ───
@@ -298,6 +307,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 },
               ),
               Container(height: 1, color: divider),
+              _toggleRow(
+                icon: Icons.notifications_active_outlined,
+                title: 'Weekly digest',
+                subtitle: 'Sunday summary of your week',
+                value: _digestEnabled,
+                textPri: textPri,
+                textSec: textSec,
+                divider: divider,
+                onChanged: (value) async {
+                  await WeeklyDigestService.setEnabled(value);
+                  if (!mounted) return;
+                  setState(() => _digestEnabled = value);
+                },
+              ),
+              Container(height: 1, color: divider),
               // Budget Alerts
               _toggleRow(
                 icon: Icons.account_balance_wallet_outlined,
@@ -434,7 +458,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const BudgetManagementScreen(),
+                    ),
                   );
                 },
               ),

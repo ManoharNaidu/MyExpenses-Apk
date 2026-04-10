@@ -52,10 +52,36 @@ class TransactionTile extends StatelessWidget {
             color: AppTheme.textDark,
           ),
         ),
-        subtitle: Text(
-          '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${shortNotes.isNotEmpty ? " • $shortNotes" : ""}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$date • ${tx.type == TxType.income ? "Income" : "Expense"}${shortNotes.isNotEmpty ? " • $shortNotes" : ""}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (tx.tags.isNotEmpty) const SizedBox(height: 4),
+            if (tx.tags.isNotEmpty)
+              Wrap(
+                spacing: 4,
+                runSpacing: 2,
+                children: tx.tags
+                    .map(
+                      (tag) => Chip(
+                        label: Text(
+                          '#$tag',
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                      ),
+                    )
+                    .toList(),
+              ),
+          ],
         ),
         trailing: Text(
           amt,

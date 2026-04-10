@@ -28,10 +28,18 @@ class _AddTransactionModalState extends ConsumerState<AddTransactionModal> {
 
   final amountCtrl = TextEditingController();
   final descriptionCtrl = TextEditingController();
+  String? _activeTagQuery;
 
   @override
   void initState() {
     super.initState();
+    descriptionCtrl.addListener(() {
+      final query = _extractActiveTagQuery(descriptionCtrl.text);
+      if (_activeTagQuery != query && mounted) {
+        setState(() => _activeTagQuery = query);
+      }
+    });
+
     final e = widget.existing;
     if (e != null) {
       type = e.type;
@@ -179,8 +187,40 @@ class _AddTransactionModalState extends ConsumerState<AddTransactionModal> {
             // Description
             TextField(
               controller: descriptionCtrl,
-              decoration:
-                  const InputDecoration(labelText: 'Notes (optional)'),
+              onChanged: (value) {
+                if (value.endsWith(' ') || value.endsWith(',')) {
+                  setState(() => _activeTagQuery = null);
+                }
+              },
+              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+            ),
+
+            Builder(
+              builder: (_) {
+                final suggestions = _tagSuggestions();
+                if (suggestions.isEmpty) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: suggestions
+                        .map(
+                          (tag) => ActionChip(
+                            label: Text('#$tag'),
+                            onPressed: () => _applyTagSuggestion(tag),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 8),
@@ -231,6 +271,31 @@ class _AddTransactionModalState extends ConsumerState<AddTransactionModal> {
         ),
       ),
     );
+  }
+
+  String? _extractActiveTagQuery(String text) {
+    final match = RegExp(r'#(\w*)$').firstMatch(text);
+    if (match == null) return null;
+    return (match.group(1) ?? '').toLowerCase();
+  }
+
+  List<String> _tagSuggestions() {
+    final query = _activeTagQuery;
+    if (query == null) return const [];
+    return TransactionRepository.allTags
+        .where((tag) => query.isEmpty || tag.startsWith(query))
+        .take(8)
+        .toList();
+  }
+
+  void _applyTagSuggestion(String tag) {
+    final text = descriptionCtrl.text;
+    final replaced = text.replaceFirst(RegExp(r'#\w*$'), '#$tag ');
+    descriptionCtrl.value = TextEditingValue(
+      text: replaced,
+      selection: TextSelection.collapsed(offset: replaced.length),
+    );
+    setState(() => _activeTagQuery = null);
   }
 
   Future<void> _save() async {

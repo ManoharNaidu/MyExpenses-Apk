@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -5,8 +7,12 @@ import 'package:intl/intl.dart';
 import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
+import '../../data/category_budget_repository.dart';
 import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
+import '../../models/category_budget.dart';
+import '../../pages/main/budget_management_screen.dart';
+import '../../widgets/dashboard_budget_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../utils/category_icons.dart';
 
@@ -28,6 +34,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     TransactionRepository.ensureInitialized();
+    final userId = ref.read(authProvider).state.userId;
+    CategoryBudgetRepository.setCurrentUserId(userId);
+    unawaited(CategoryBudgetRepository.ensureInitialized());
   }
 
   Future<void> _pickMonth() async {
@@ -118,6 +127,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 expenses: expenses,
                 dailyAverage: dailyAverage,
                 savings: savings,
+              ),
+              const SizedBox(height: 14),
+              StreamBuilder<List<CategoryBudget>>(
+                stream: CategoryBudgetRepository.getBudgetsStream(),
+                initialData: CategoryBudgetRepository.currentBudgets,
+                builder: (context, budgetSnapshot) {
+                  final budgets = budgetSnapshot.data ?? const <CategoryBudget>[];
+                  unawaited(
+                    CategoryBudgetRepository.checkThresholds(
+                      txs,
+                      _selectedMonth,
+                    ),
+                  );
+                  return DashboardBudgetCard(
+                    budgets: budgets,
+                    transactions: txs,
+                    currentMonth: _selectedMonth,
+                    currencySymbol: currencySymbol,
+                    isDark: isDark,
+                    onManage: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const BudgetManagementScreen(),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 14),
               Text(

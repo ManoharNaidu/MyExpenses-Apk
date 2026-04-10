@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../storage/secure_storage.dart';
 
@@ -88,5 +89,42 @@ class NotificationService {
     );
 
     await _plugin.show(id, title, body, details);
+  }
+
+  static Future<void> cancel(int id) async {
+    if (!_initialized) return;
+    if (kIsWeb) return;
+    await _plugin.cancel(id);
+  }
+
+  static Future<void> scheduleWeekly({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    if (!_initialized || kIsWeb || !_enabled) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      'weekly_digest_channel',
+      'Weekly Digest',
+      channelDescription: 'Weekly spending summary',
+      importance: Importance.defaultImportance,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(scheduledDate, tz.local),
+      details,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
   }
 }

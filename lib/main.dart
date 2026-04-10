@@ -3,19 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:timezone/data/latest.dart' as tz;
 
 import 'core/notifications/notification_service.dart';
 import 'core/theme/theme_provider.dart';
 import 'pages/router/root_router.dart';
+import 'services/weekly_digest_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  tz.initializeTimeZones();
   debugPrint('ENV LOADED: ${dotenv.env}');
   // debugPrint('RESOLVED BASE URL: ${ApiClient.baseUrl}');
 
   runApp(const ProviderScope(child: MyExpensesApp()));
   unawaited(NotificationService.initialize());
+  unawaited(WeeklyDigestService.initialize());
 }
 
 class MyExpensesApp extends ConsumerWidget {
