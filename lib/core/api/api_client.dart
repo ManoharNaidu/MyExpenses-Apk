@@ -30,6 +30,7 @@ _parseAndDecode(String response) {
   return jsonDecode(response);
 }
 
+// ignore: always_declare_return_types
 parseJson(String text) {
   return compute(_parseAndDecode, text);
 }
@@ -39,22 +40,13 @@ class ApiClient {
   static String get _baseUrl {
     final envUrl = dotenv.get('API_URL', fallback: '');
     
-    // In debug mode, we should default to localhost unless explicitly overridden to something else valid.
-    // This prevents accidental connection to production if the asset bundle is stale or misconfigured.
-    // if (kDebugMode) {
-    //   if (envUrl.isEmpty || envUrl.contains('onrender.com')) {
-    //     String target = 'localhost';
-        
-    //     // Android Emulator specific fix
-    //     if (defaultTargetPlatform == TargetPlatform.android) {
-    //       target = '10.0.2.2';
-    //     }
-        
-    //     final resolvedUrl = 'http://$target:8000/api/v1';
-    //     debugPrint('DEBUG MODE: Overriding $envUrl to local backend: $resolvedUrl');
-    //     return resolvedUrl;
-    //   }
-    // }
+    // In debug mode, we default to localhost unless explicitly overridden.
+    if (kDebugMode && (envUrl.isEmpty || envUrl.contains('onrender.com'))) {
+      String target = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : 'localhost';
+      final localUrl = 'http://$target:8000/api/v1';
+      debugPrint('DEBUG MODE: Overriding $envUrl to local backend: $localUrl');
+      return localUrl;
+    }
 
     if (envUrl.isNotEmpty) return envUrl;
     return 'https://my-expenses-backend-fastapi.onrender.com/api/v1';
