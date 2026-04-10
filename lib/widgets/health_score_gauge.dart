@@ -4,13 +4,19 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/health_score.dart';
 import '../core/constants/app_colors.dart';
 
+import '../models/transaction_model.dart';
+
 class HealthScoreGauge extends StatefulWidget {
-  final HealthScore score;
+  final HealthScore? score;
+  final List<TransactionModel>? transactions;
+  final DateTime? selectedDate;
   final bool animate;
 
   const HealthScoreGauge({
     super.key,
-    required this.score,
+    this.score,
+    this.transactions,
+    this.selectedDate,
     this.animate = true,
   });
 
@@ -22,10 +28,22 @@ class _HealthScoreGaugeState extends State<HealthScoreGauge>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  late HealthScore _effectiveScore;
 
   @override
   void initState() {
     super.initState();
+    
+    // Resolve score
+    if (widget.score != null) {
+      _effectiveScore = widget.score!;
+    } else if (widget.transactions != null && widget.selectedDate != null) {
+      _effectiveScore = HealthScore.calculate(widget.transactions!, widget.selectedDate!);
+    } else {
+      // Fallback
+      _effectiveScore = HealthScore.calculate([], DateTime.now());
+    }
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -53,7 +71,7 @@ class _HealthScoreGaugeState extends State<HealthScoreGauge>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => _ScoreBreakdownSheet(score: widget.score),
+      builder: (context) => _ScoreBreakdownSheet(score: _effectiveScore),
     );
   }
 
@@ -72,7 +90,7 @@ class _HealthScoreGaugeState extends State<HealthScoreGauge>
                   height: 120,
                   child: CustomPaint(
                     painter: _GaugePainter(
-                      score: widget.score.totalScore,
+                      score: _effectiveScore.totalScore,
                       progress: _animation.value,
                     ),
                   ),
@@ -82,19 +100,19 @@ class _HealthScoreGaugeState extends State<HealthScoreGauge>
                   child: Column(
                     children: [
                       Text(
-                        (widget.score.totalScore * _animation.value).round().toString(),
+                        (_effectiveScore.totalScore * _animation.value).round().toString(),
                         style: GoogleFonts.outfit(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
-                          color: widget.score.band.color,
+                          color: _effectiveScore.band.color,
                         ),
                       ),
                       Text(
-                        widget.score.band.label,
+                        _effectiveScore.band.label,
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: widget.score.band.color.withOpacity(0.8),
+                          color: _effectiveScore.band.color.withOpacity(0.8),
                         ),
                       ),
                     ],
@@ -106,7 +124,7 @@ class _HealthScoreGaugeState extends State<HealthScoreGauge>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                widget.score.coachingMessage,
+                _effectiveScore.coachingMessage,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 13,
@@ -118,13 +136,13 @@ class _HealthScoreGaugeState extends State<HealthScoreGauge>
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => _showBreakdown(context),
-              icon: Icon(Icons.info_outline, size: 16, color: widget.score.band.color),
+              icon: Icon(Icons.info_outline, size: 16, color: _effectiveScore.band.color),
               label: Text(
                 "How is this calculated?",
                 style: GoogleFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: widget.score.band.color,
+                  color: _effectiveScore.band.color,
                 ),
               ),
             ),

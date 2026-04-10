@@ -13,6 +13,7 @@ class AppTheme {
   static const incomeGreen = Color(0xFF2D7A4F); // income amounts, positive
   static const expenseRed = Color(0xFFC0392B); // expense amounts, negative
   static const budgetAmber = Color(0xFFD97706); // budget warning 80%+
+  static const background = cream;
 
   // ─── Dark-mode palette (warm-tinted) ──────────────────────────────
   static const darkBg = Color(0xFF141210); // scaffold — warm near-black

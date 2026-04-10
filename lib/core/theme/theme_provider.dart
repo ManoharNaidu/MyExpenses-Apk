@@ -45,7 +45,7 @@ class ThemeProvider extends ChangeNotifier {
         bodyColor: isDark ? Colors.white : Colors.black87,
         displayColor: isDark ? Colors.white : Colors.black87,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: surfaceColor,
         elevation: isDark ? 0 : 2,
         shape: RoundedRectangleBorder(

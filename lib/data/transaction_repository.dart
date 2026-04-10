@@ -372,19 +372,6 @@ class TransactionRepository {
     );
   }
 
-  static Future<void> duplicateRecurringTransactionNow(
-    String recurringId,
-  ) async {
-    final res = await ApiClient.post(
-      '/recurring-transactions/$recurringId/duplicate-now',
-      {},
-    );
-    ApiClient.ensureSuccess(
-      res,
-      fallbackMessage: 'Failed to duplicate recurring transaction',
-    );
-    await loadInitial(forceRefresh: true);
-  }
 
   /// Loads first page (10 records), optionally forcing network refresh.
   static Future<void> loadInitial({bool forceRefresh = false}) async {

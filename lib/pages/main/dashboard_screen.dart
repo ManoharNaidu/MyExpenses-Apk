@@ -503,6 +503,9 @@ class _MonthlyOverviewCard extends StatelessWidget {
     final savingsRate = monthIncome > 0
         ? ((monthIncome - monthExpense) / monthIncome) * 100
         : 0.0;
+    
+    final isPositive = monthNet >= 0;
+    final netColor = isPositive ? AppTheme.incomeGreen : AppTheme.expenseRed;
 
     return Container(
       decoration: BoxDecoration(
