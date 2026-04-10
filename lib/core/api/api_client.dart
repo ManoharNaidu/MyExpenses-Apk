@@ -144,10 +144,14 @@ class ApiClient {
       final msg = defaultMessage ?? genericUnexpectedMessage;
       return LegacyHttpResponse(500, '{"message": "$msg"}');
     }
-    return LegacyHttpResponse(
-      response.statusCode ?? 500,
-      response.data?.toString() ?? '',
-    );
+
+    final data = response.data;
+    final body = data is String
+        ? data
+        : data == null
+        ? ''
+        : jsonEncode(data);
+    return LegacyHttpResponse(response.statusCode ?? 500, body);
   }
 
   static String _dioErrorToMessage(DioException e) {

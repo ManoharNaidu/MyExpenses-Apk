@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../app/theme.dart';
+import '../utils/category_icons.dart';
 
 class TransactionTile extends StatelessWidget {
   final TransactionModel tx;
@@ -20,6 +21,8 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = tx.type == TxType.income;
+    final txColor = transactionTypeColor(context, tx.type);
+    final iconBg = txColor.withValues(alpha: 0.12);
     final amt = (isIncome ? '+' : '-') + tx.amount.toStringAsFixed(2);
     final date = DateFormat('dd MMM yyyy').format(tx.date);
     final notes = (tx.notes ?? tx.description ?? '').trim();
@@ -36,18 +39,8 @@ class TransactionTile extends StatelessWidget {
                 onPressed: onDelete,
               )
             : CircleAvatar(
-                backgroundColor: (isIncome
-                        ? const Color(0xFF2D6A4F)
-                        : const Color(0xFFBC4749))
-                    .withValues(alpha: 0.12),
-                child: Icon(
-                  isIncome
-                      ? Icons.arrow_downward_rounded
-                      : Icons.arrow_upward_rounded,
-                  color: isIncome
-                      ? const Color(0xFF2D6A4F)
-                      : const Color(0xFFBC4749),
-                ),
+                backgroundColor: iconBg,
+                child: Icon(categoryIconFor(tx.category), color: txColor),
               ),
         title: Text(
           tx.category,
@@ -61,12 +54,7 @@ class TransactionTile extends StatelessWidget {
         ),
         trailing: Text(
           amt,
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: isIncome
-                ? const Color(0xFF2D6A4F)
-                : const Color(0xFFBC4749),
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900, color: txColor),
         ),
         onTap: onEdit,
       ),

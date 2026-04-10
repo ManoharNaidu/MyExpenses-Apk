@@ -76,6 +76,12 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fieldFill = isDark ? AppTheme.darkField : AppTheme.card;
+    final textPrimary = isDark ? AppTheme.darkTextPri : AppTheme.textDark;
+    final textSecondary = isDark ? AppTheme.darkTextSec : AppTheme.textSoft;
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -93,8 +99,14 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: fieldFill,
+              prefixIconColor: textSecondary,
+              suffixIconColor: textSecondary,
+              labelStyle: TextStyle(color: textSecondary),
+              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7)),
             ),
+            style: TextStyle(color: textPrimary),
+            cursorColor: accentColor,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your name';
@@ -119,13 +131,19 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: fieldFill,
+              prefixIconColor: textSecondary,
+              suffixIconColor: textSecondary,
+              labelStyle: TextStyle(color: textSecondary),
+              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7)),
             ),
+            style: TextStyle(color: textPrimary),
+            cursorColor: accentColor,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!value.contains("@")) {
+              if (!value.contains('@')) {
                 debugPrint("Invalid email: $value");
                 return 'Please enter a valid email';
               }
@@ -156,8 +174,14 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: fieldFill,
+              prefixIconColor: textSecondary,
+              suffixIconColor: textSecondary,
+              labelStyle: TextStyle(color: textSecondary),
+              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7)),
             ),
+            style: TextStyle(color: textPrimary),
+            cursorColor: accentColor,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your password';
@@ -176,8 +200,8 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleRegister,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: AppTheme.textDark,
+                backgroundColor: accentColor,
+                foregroundColor: textPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -195,7 +219,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                       ),
                     )
                   : const Text(
-                      "Register",
+                      'Register',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

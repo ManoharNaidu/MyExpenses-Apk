@@ -75,6 +75,12 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fieldFill = isDark ? AppTheme.darkField : AppTheme.card;
+    final textPrimary = isDark ? AppTheme.darkTextPri : AppTheme.textDark;
+    final textSecondary = isDark ? AppTheme.darkTextSec : AppTheme.textSoft;
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -92,8 +98,14 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: fieldFill,
+              prefixIconColor: textSecondary,
+              suffixIconColor: textSecondary,
+              labelStyle: TextStyle(color: textSecondary),
+              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7)),
             ),
+            style: TextStyle(color: textPrimary),
+            cursorColor: accentColor,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
@@ -128,8 +140,14 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: AppTheme.card,
+              fillColor: fieldFill,
+              prefixIconColor: textSecondary,
+              suffixIconColor: textSecondary,
+              labelStyle: TextStyle(color: textSecondary),
+              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.7)),
             ),
+            style: TextStyle(color: textPrimary),
+            cursorColor: accentColor,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your password';
@@ -149,7 +167,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 );
               },
               child: const Text(
-                "Forgot Password?",
+                'Forgot Password?',
                 style: TextStyle(
                   color: AppTheme.accent,
                   fontSize: 14,
@@ -166,8 +184,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: AppTheme.textDark,
+                backgroundColor: accentColor,
+                foregroundColor: textPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -185,7 +203,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       ),
                     )
                   : const Text(
-                      "Login",
+                      'Login',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

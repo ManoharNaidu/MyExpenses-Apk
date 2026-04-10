@@ -36,11 +36,13 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
     setState(() => _isLoading = true);
     try {
-      await ref.read(authProvider).resetPassword(
-        email: widget.email,
-        otp: _codeController.text.trim(),
-        newPassword: _passwordController.text,
-      );
+      await ref
+          .read(authProvider)
+          .resetPassword(
+            email: widget.email,
+            otp: _codeController.text.trim(),
+            newPassword: _passwordController.text,
+          );
       if (mounted) {
         await showAppFeedbackDialog(
           context,
@@ -70,7 +72,15 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppTheme.darkBg : AppTheme.cream;
+    final fieldFill = isDark ? AppTheme.darkField : AppTheme.card;
+    final titleColor = isDark ? AppTheme.darkTextPri : AppTheme.textDark;
+    final subtitleColor = isDark ? AppTheme.darkTextSec : AppTheme.textSoft;
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
+
     return Scaffold(
+      backgroundColor: bg,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -108,17 +118,17 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                     textAlign: TextAlign.center,
                     maxLength: 6,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 8,
-                      color: AppTheme.textDark,
+                      color: titleColor,
                     ),
                     decoration: InputDecoration(
                       counterText: '',
                       hintText: '000000',
                       hintStyle: TextStyle(
-                        color: AppTheme.textSoft.withValues(alpha: 0.4),
+                        color: subtitleColor.withValues(alpha: 0.4),
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 8,
@@ -127,7 +137,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.card,
+                      fillColor: fieldFill,
                     ),
                     validator: (value) {
                       if (value == null || value.length != 6) {
@@ -160,8 +170,16 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.card,
+                      fillColor: fieldFill,
+                      prefixIconColor: subtitleColor,
+                      suffixIconColor: subtitleColor,
+                      labelStyle: TextStyle(color: subtitleColor),
+                      hintStyle: TextStyle(
+                        color: subtitleColor.withValues(alpha: 0.7),
+                      ),
                     ),
+                    style: TextStyle(color: titleColor),
+                    cursorColor: accentColor,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a new password';
@@ -196,8 +214,16 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.card,
+                      fillColor: fieldFill,
+                      prefixIconColor: subtitleColor,
+                      suffixIconColor: subtitleColor,
+                      labelStyle: TextStyle(color: subtitleColor),
+                      hintStyle: TextStyle(
+                        color: subtitleColor.withValues(alpha: 0.7),
+                      ),
                     ),
+                    style: TextStyle(color: titleColor),
+                    cursorColor: accentColor,
                     validator: (value) {
                       if (value != _passwordController.text) {
                         return 'Passwords do not match';
@@ -214,8 +240,8 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleReset,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: AppTheme.textDark,
+                        backgroundColor: accentColor,
+                        foregroundColor: titleColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

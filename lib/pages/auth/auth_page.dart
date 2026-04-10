@@ -16,7 +16,14 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppTheme.darkBg : AppTheme.cream;
+    final card = isDark ? AppTheme.darkCard : AppTheme.card;
+    final titleColor = isDark ? AppTheme.darkTextPri : AppTheme.textDark;
+    final subtitleColor = isDark ? AppTheme.darkTextSec : AppTheme.textSoft;
+
     return Scaffold(
+      backgroundColor: bg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -29,7 +36,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withValues(alpha: 0.2),
+                    color: (isDark ? AppTheme.darkAccent : AppTheme.accent)
+                        .withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Padding(
@@ -43,28 +51,25 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 const SizedBox(height: 24),
 
                 // App Title
-                const Text(
-                  "My Expenses",
+                Text(
+                  'My Expenses',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.textDark,
+                    color: titleColor,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  "Track your spending, save more",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textSoft,
-                  ),
+                Text(
+                  'Track your spending, save more',
+                  style: TextStyle(fontSize: 14, color: subtitleColor),
                 ),
                 const SizedBox(height: 40),
 
                 // Tab Selector
                 Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.card,
+                    color: card,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
@@ -83,7 +88,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: isLogin
-                                  ? AppTheme.accent
+                                  ? (isDark
+                                        ? AppTheme.darkAccent
+                                        : AppTheme.accent)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -93,9 +100,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: isLogin
-                                    ? AppTheme.textDark
-                                    : AppTheme.textSoft,
+                                color: isLogin ? titleColor : subtitleColor,
                               ),
                             ),
                           ),
@@ -108,7 +113,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: !isLogin
-                                  ? AppTheme.accent
+                                  ? (isDark
+                                        ? AppTheme.darkAccent
+                                        : AppTheme.accent)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -118,9 +125,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: !isLogin
-                                    ? AppTheme.textDark
-                                    : AppTheme.textSoft,
+                                color: !isLogin ? titleColor : subtitleColor,
                               ),
                             ),
                           ),

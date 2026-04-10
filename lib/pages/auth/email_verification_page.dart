@@ -12,7 +12,8 @@ class EmailVerificationPage extends ConsumerStatefulWidget {
   const EmailVerificationPage({super.key, required this.email});
 
   @override
-  ConsumerState<EmailVerificationPage> createState() => _EmailVerificationPageState();
+  ConsumerState<EmailVerificationPage> createState() =>
+      _EmailVerificationPageState();
 }
 
 class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
@@ -88,9 +89,7 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
   Future<void> _handleResend() async {
     setState(() => _isResending = true);
     try {
-      await ref.read(authProvider).sendVerificationCode(
-        email: widget.email,
-      );
+      await ref.read(authProvider).sendVerificationCode(email: widget.email);
       _startCooldown();
       if (mounted) {
         await showAppFeedbackDialog(
@@ -116,9 +115,17 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppTheme.darkBg : AppTheme.cream;
+    final fieldFill = isDark ? AppTheme.darkField : AppTheme.card;
+    final titleColor = isDark ? AppTheme.darkTextPri : AppTheme.textDark;
+    final subtitleColor = isDark ? AppTheme.darkTextSec : AppTheme.textSoft;
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
+
     final email = widget.email;
 
     return Scaffold(
+      backgroundColor: bg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -131,7 +138,7 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withValues(alpha: 0.2),
+                    color: accentColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Icon(
@@ -141,21 +148,21 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  "Verify Your Email",
-                   style: TextStyle(
+                Text(
+                  'Verify Your Email',
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.textDark,
+                    color: titleColor,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   "We've sent a 6-digit code to\n$email",
                   textAlign: TextAlign.center,
-                   style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppTheme.textSoft,
+                    color: subtitleColor,
                     height: 1.5,
                   ),
                 ),
@@ -168,17 +175,17 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                   textAlign: TextAlign.center,
                   maxLength: 6,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                   style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 8,
-                    color: AppTheme.textDark,
+                    color: titleColor,
                   ),
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: '000000',
                     hintStyle: TextStyle(
-                      color: AppTheme.textSoft.withValues(alpha: 0.4),
+                      color: subtitleColor.withValues(alpha: 0.4),
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 8,
@@ -187,7 +194,7 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: AppTheme.card,
+                    fillColor: fieldFill,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 18,
                       horizontal: 16,
@@ -203,8 +210,8 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                   child: ElevatedButton(
                     onPressed: _isVerifying ? null : _handleVerify,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: AppTheme.textDark,
+                      backgroundColor: accentColor,
+                      foregroundColor: titleColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -238,7 +245,7 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                   children: [
                     const Text(
                       "Didn't receive the code? ",
-                      style: TextStyle(color: AppTheme.textSoft, fontSize: 14),
+                      style: TextStyle(fontSize: 14),
                     ),
                     GestureDetector(
                       onTap: (_resendCooldown > 0 || _isResending)
@@ -250,8 +257,8 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                             : "Resend",
                         style: TextStyle(
                           color: _resendCooldown > 0
-                              ? AppTheme.textSoft
-                              : AppTheme.accent,
+                              ? subtitleColor
+                              : accentColor,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
@@ -266,7 +273,7 @@ class _EmailVerificationPageState extends ConsumerState<EmailVerificationPage> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text(
                     "Back to Login",
-                    style: TextStyle(color: AppTheme.textSoft, fontSize: 14),
+                    style: TextStyle(fontSize: 14),
                   ),
                 ),
               ],

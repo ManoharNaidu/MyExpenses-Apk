@@ -8,6 +8,7 @@ import '../../core/constants/currencies.dart';
 import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
 import '../../widgets/empty_state.dart';
+import '../../utils/category_icons.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -61,6 +62,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       initialData: TransactionRepository.currentTransactions,
       builder: (context, snapshot) {
         final txs = snapshot.data ?? const <TransactionModel>[];
+        final expenseColor = transactionTypeColor(context, TxType.expense);
+        final incomeColor = transactionTypeColor(context, TxType.income);
 
         final start = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
         final end = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
@@ -136,16 +139,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   (tx) => Card(
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: tx.type == TxType.income
-                            ? Colors.green.withValues(alpha: 0.15)
-                            : Colors.orange.withValues(alpha: 0.15),
+                        backgroundColor: transactionTypeColor(
+                          context,
+                          tx.type,
+                        ).withValues(alpha: 0.12),
                         child: Icon(
-                          tx.type == TxType.income
-                              ? Icons.arrow_downward_rounded
-                              : Icons.arrow_upward_rounded,
-                          color: tx.type == TxType.income
-                              ? Colors.green
-                              : Colors.orange,
+                          categoryIconFor(tx.category),
+                          color: transactionTypeColor(context, tx.type),
                         ),
                       ),
                       title: Text(tx.category),
@@ -159,8 +159,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: tx.type == TxType.income
-                              ? Colors.green
-                              : Colors.orange,
+                              ? incomeColor
+                              : expenseColor,
                         ),
                       ),
                     ),

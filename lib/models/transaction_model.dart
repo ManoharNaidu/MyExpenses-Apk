@@ -52,7 +52,7 @@ class TransactionModel {
   Map<String, dynamic> toJson() {
     final map = {
       // Don't send user_id - backend will extract it from JWT token
-      'date': date.toIso8601String().split('T')[0], // date only (YYYY-MM-DD)
+      'date': date.toIso8601String(),
       'description': description,
       'notes': notes,
       'type': type == TxType.income ? 'income' : 'expense',

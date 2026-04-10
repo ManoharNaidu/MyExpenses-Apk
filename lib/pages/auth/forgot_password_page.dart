@@ -28,9 +28,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
     setState(() => _isLoading = true);
     try {
-      await ref.read(authProvider).forgotPassword(
-        _emailController.text.trim(),
-      );
+      await ref.read(authProvider).forgotPassword(_emailController.text.trim());
       if (mounted) {
         await showAppFeedbackDialog(
           context,
@@ -63,7 +61,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppTheme.darkBg : AppTheme.cream;
+    final fieldFill = isDark ? AppTheme.darkField : AppTheme.card;
+    final titleColor = isDark ? AppTheme.darkTextPri : AppTheme.textDark;
+    final subtitleColor = isDark ? AppTheme.darkTextSec : AppTheme.textSoft;
+    final accentColor = isDark ? AppTheme.darkAccent : AppTheme.accent;
+
     return Scaffold(
+      backgroundColor: bg,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -87,7 +93,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppTheme.accent.withValues(alpha: 0.2),
+                      color: accentColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Icon(
@@ -97,21 +103,21 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    "Reset Password",
+                  Text(
+                    'Reset Password',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.textDark,
+                      color: titleColor,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     "Enter your email address and we'll send you a code to reset your password.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.textSoft,
+                      color: subtitleColor,
                       height: 1.5,
                     ),
                   ),
@@ -127,8 +133,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       filled: true,
-                      fillColor: AppTheme.card,
+                      fillColor: fieldFill,
+                      prefixIconColor: subtitleColor,
+                      labelStyle: TextStyle(color: subtitleColor),
+                      hintStyle: TextStyle(
+                        color: subtitleColor.withValues(alpha: 0.7),
+                      ),
                     ),
+                    style: TextStyle(color: titleColor),
+                    cursorColor: accentColor,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
@@ -146,8 +159,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleSendCode,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: AppTheme.textDark,
+                        backgroundColor: accentColor,
+                        foregroundColor: titleColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
