@@ -68,7 +68,8 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
   final Set<String> _expenseCategories = <String>{};
 
   final TextEditingController _incomeCustomController = TextEditingController();
-  final TextEditingController _expenseCustomController = TextEditingController();
+  final TextEditingController _expenseCustomController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -116,7 +117,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
     _pageController.jumpToPage(_currentStep);
     _progressController.value = _currentStep / 4;
 
-    if (_persona != null && _incomeCategories.isEmpty && _expenseCategories.isEmpty) {
+    if (_persona != null &&
+        _incomeCategories.isEmpty &&
+        _expenseCategories.isEmpty) {
       _applyPersonaDefaults();
     }
   }
@@ -184,7 +187,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
     setState(() => _isCompleting = true);
 
     try {
-      final selectedCurrency = (_currency ?? auth.state.effectiveCurrency).trim().toUpperCase();
+      final selectedCurrency = (_currency ?? auth.state.effectiveCurrency)
+          .trim()
+          .toUpperCase();
       if (selectedCurrency != auth.state.effectiveCurrency) {
         await auth.updateCurrency(selectedCurrency);
       }
@@ -236,7 +241,10 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
                     width: 36,
                     child: _currentStep > 0
                         ? IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_rounded,
+                              size: 18,
+                            ),
                             onPressed: () => _goToStep(_currentStep - 1),
                           )
                         : const SizedBox.shrink(),
@@ -250,7 +258,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
                           value: _progressController.value,
                           minHeight: 4,
                           color: AppTheme.accent,
-                          backgroundColor: isDark ? AppTheme.darkDivider : AppTheme.divider,
+                          backgroundColor: isDark
+                              ? AppTheme.darkDivider
+                              : AppTheme.divider,
                         ),
                       ),
                     ),
@@ -263,11 +273,19 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _stepContainer(_buildStep1(auth.userName, textPrimary, textSecondary)),
-                  _stepContainer(_buildStep2(textPrimary, textSecondary, isDark)),
+                  _stepContainer(
+                    _buildStep1(auth.userName, textPrimary, textSecondary),
+                  ),
+                  _stepContainer(
+                    _buildStep2(textPrimary, textSecondary, isDark),
+                  ),
                   _stepContainer(_buildStep3(textPrimary, textSecondary)),
-                  _stepContainer(_buildStep4(textPrimary, textSecondary, isDark)),
-                  _stepContainer(_buildStep5(textPrimary, textSecondary, isDark)),
+                  _stepContainer(
+                    _buildStep4(textPrimary, textSecondary, isDark),
+                  ),
+                  _stepContainer(
+                    _buildStep5(textPrimary, textSecondary, isDark),
+                  ),
                 ],
               ),
             ),
@@ -278,7 +296,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
   }
 
   Widget _buildStep1(String? userName, Color textPrimary, Color textSecondary) {
-    final shownName = (userName == null || userName.trim().isEmpty) ? 'there' : userName.trim();
+    final shownName = (userName == null || userName.trim().isEmpty)
+        ? 'there'
+        : userName.trim();
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.75,
       child: Column(
@@ -288,7 +308,11 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
           Text(
             'Welcome, $shownName',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: textPrimary),
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: textPrimary,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -319,7 +343,11 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
       children: [
         Text(
           "What's your main goal right now?",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textPrimary),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: textPrimary,
+          ),
         ),
         const SizedBox(height: 18),
         GridView.builder(
@@ -388,16 +416,21 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
   }
 
   Widget _buildStep3(Color textPrimary, Color textSecondary) {
-    final selectedCurrency = (_currency ?? ref.read(authProvider).state.effectiveCurrency)
-        .trim()
-        .toUpperCase();
+    final selectedCurrency =
+        (_currency ?? ref.read(authProvider).state.effectiveCurrency)
+            .trim()
+            .toUpperCase();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Where are you based?',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textPrimary),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: textPrimary,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
@@ -406,7 +439,8 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          initialValue: supportedCurrencies.any((c) => c.code == selectedCurrency)
+          initialValue:
+              supportedCurrencies.any((c) => c.code == selectedCurrency)
               ? selectedCurrency
               : supportedCurrencies.first.code,
           items: supportedCurrencies
@@ -434,7 +468,11 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
       children: [
         Text(
           'How do you earn?',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textPrimary),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: textPrimary,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
@@ -453,7 +491,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
             Expanded(
               child: TextField(
                 controller: _incomeCustomController,
-                decoration: const InputDecoration(labelText: 'Add custom income source'),
+                decoration: const InputDecoration(
+                  labelText: 'Add custom income source',
+                ),
               ),
             ),
             IconButton(
@@ -472,7 +512,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
         TextButton(
           onPressed: () {
             if (_incomeCategories.isEmpty && _persona != null) {
-              _incomeCategories.addAll(_personaIncomeDefaults[_persona] ?? const <String>[]);
+              _incomeCategories.addAll(
+                _personaIncomeDefaults[_persona] ?? const <String>[],
+              );
             }
             unawaited(_goToStep(4));
           },
@@ -492,7 +534,11 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
       children: [
         Text(
           'What do you regularly spend on?',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textPrimary),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: textPrimary,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
@@ -511,7 +557,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
             Expanded(
               child: TextField(
                 controller: _expenseCustomController,
-                decoration: const InputDecoration(labelText: 'Add custom spending category'),
+                decoration: const InputDecoration(
+                  labelText: 'Add custom spending category',
+                ),
               ),
             ),
             IconButton(
@@ -530,7 +578,9 @@ class _OnboardingWizardState extends ConsumerState<OnboardingWizard>
         TextButton(
           onPressed: () {
             if (_expenseCategories.isEmpty && _persona != null) {
-              _expenseCategories.addAll(_personaExpenseDefaults[_persona] ?? const <String>[]);
+              _expenseCategories.addAll(
+                _personaExpenseDefaults[_persona] ?? const <String>[],
+              );
             }
             unawaited(_complete());
           },

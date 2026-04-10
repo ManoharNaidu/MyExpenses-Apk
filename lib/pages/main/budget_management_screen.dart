@@ -16,7 +16,8 @@ class BudgetManagementScreen extends ConsumerStatefulWidget {
       _BudgetManagementScreenState();
 }
 
-class _BudgetManagementScreenState extends ConsumerState<BudgetManagementScreen> {
+class _BudgetManagementScreenState
+    extends ConsumerState<BudgetManagementScreen> {
   bool _alertsEnabled = true;
 
   @override
@@ -63,13 +64,16 @@ class _BudgetManagementScreenState extends ConsumerState<BudgetManagementScreen>
             children: [
               SwitchListTile(
                 title: const Text('Budget Alerts'),
-                subtitle: const Text('Enable notifications for threshold breaches'),
+                subtitle: const Text(
+                  'Enable notifications for threshold breaches',
+                ),
                 value: _alertsEnabled,
                 onChanged: (value) => setState(() => _alertsEnabled = value),
               ),
               const SizedBox(height: 8),
               ...categories.map((category) {
-                final budget = byCategory[category] ??
+                final budget =
+                    byCategory[category] ??
                     CategoryBudget(
                       userId: authState.userId ?? '',
                       category: category,
@@ -107,7 +111,9 @@ class _BudgetManagementScreenState extends ConsumerState<BudgetManagementScreen>
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: controller,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Monthly limit',
                           prefixText: '$symbol ',
@@ -126,7 +132,9 @@ class _BudgetManagementScreenState extends ConsumerState<BudgetManagementScreen>
                         },
                       ),
                       const SizedBox(height: 4),
-                      Text('Spent: $symbol${spent.toStringAsFixed(2)} this month'),
+                      Text(
+                        'Spent: $symbol${spent.toStringAsFixed(2)} this month',
+                      ),
                     ],
                   ),
                   trailing: Switch(

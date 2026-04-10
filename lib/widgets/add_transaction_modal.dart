@@ -17,7 +17,8 @@ class AddTransactionModal extends ConsumerStatefulWidget {
   const AddTransactionModal({super.key, this.existing, required this.onSaved});
 
   @override
-  ConsumerState<AddTransactionModal> createState() => _AddTransactionModalState();
+  ConsumerState<AddTransactionModal> createState() =>
+      _AddTransactionModalState();
 }
 
 class _AddTransactionModalState extends ConsumerState<AddTransactionModal> {
@@ -318,10 +319,12 @@ class _AddTransactionModalState extends ConsumerState<AddTransactionModal> {
       type: type,
       category: category,
       amount: amount,
-      description:
-          descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
-      notes:
-          descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
+      description: descriptionCtrl.text.trim().isEmpty
+          ? null
+          : descriptionCtrl.text.trim(),
+      notes: descriptionCtrl.text.trim().isEmpty
+          ? null
+          : descriptionCtrl.text.trim(),
       repeatMonthly: repeatMonthly,
     );
 

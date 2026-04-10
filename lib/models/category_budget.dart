@@ -46,7 +46,8 @@ class CategoryBudget {
       alertsEnabled: (json['alerts_enabled'] as bool?) ?? true,
       enabled: (json['enabled'] as bool?) ?? true,
       updatedAt:
-          DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 

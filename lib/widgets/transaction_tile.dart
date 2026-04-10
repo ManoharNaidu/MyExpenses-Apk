@@ -73,8 +73,7 @@ class TransactionTile extends StatelessWidget {
                           '#$tag',
                           style: const TextStyle(fontSize: 10),
                         ),
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
                       ),

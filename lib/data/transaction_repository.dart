@@ -386,7 +386,6 @@ class TransactionRepository {
     );
   }
 
-
   /// Loads first page (10 records), optionally forcing network refresh.
   static Future<void> loadInitial({bool forceRefresh = false}) async {
     if (_currentUserId == null || _isLoading) return;
@@ -590,8 +589,7 @@ class TransactionRepository {
     final txId = tx.id;
     if (txId == null) return;
 
-    final payload = Map<String, dynamic>.from(updatedTx.toJson())
-      ..remove('id');
+    final payload = Map<String, dynamic>.from(updatedTx.toJson())..remove('id');
     if (_isLocalId(txId)) {
       final idx = _outbox.indexWhere(
         (op) =>
@@ -799,13 +797,22 @@ class TransactionRepository {
   /// Delete a recurring transaction.
   static Future<void> deleteRecurringTransaction(String id) async {
     final res = await ApiClient.delete('/recurring-transactions/$id');
-    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to delete recurring transaction.');
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to delete recurring transaction.',
+    );
   }
 
   /// Manually trigger duplication of a recurring transaction now.
   static Future<void> duplicateRecurringTransactionNow(String id) async {
-    final res = await ApiClient.post('/recurring-transactions/$id/duplicate-now', null);
-    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to duplicate recurring transaction.');
+    final res = await ApiClient.post(
+      '/recurring-transactions/$id/duplicate-now',
+      null,
+    );
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to duplicate recurring transaction.',
+    );
     // Refresh the local transaction list since a new transaction was likely created.
     unawaited(loadInitial(forceRefresh: true));
   }

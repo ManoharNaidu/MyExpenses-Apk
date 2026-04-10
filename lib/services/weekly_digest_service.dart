@@ -37,9 +37,12 @@ class WeeklyDigestService {
   }
 
   static Future<void> _scheduleNext() async {
-    final dayPref = int.tryParse(await SecureStorage.readString(_dayKey) ?? '0') ?? 0;
-    final hour = int.tryParse(await SecureStorage.readString(_hourKey) ?? '18') ?? 18;
-    final minute = int.tryParse(await SecureStorage.readString(_minuteKey) ?? '0') ?? 0;
+    final dayPref =
+        int.tryParse(await SecureStorage.readString(_dayKey) ?? '0') ?? 0;
+    final hour =
+        int.tryParse(await SecureStorage.readString(_hourKey) ?? '18') ?? 18;
+    final minute =
+        int.tryParse(await SecureStorage.readString(_minuteKey) ?? '0') ?? 0;
 
     final now = DateTime.now();
     final next = _nextWeekday(now, dayPref, hour, minute);
@@ -61,7 +64,8 @@ class WeeklyDigestService {
     if (weekTxs.isEmpty) {
       return const DigestContent(
         title: 'Quiet week - any transactions to add?',
-        body: 'No transactions recorded this week. Tap to add some or upload your bank statement.',
+        body:
+            'No transactions recorded this week. Tap to add some or upload your bank statement.',
       );
     }
 
@@ -72,13 +76,15 @@ class WeeklyDigestService {
     if (net >= 0) {
       return DigestContent(
         title: 'Great week - you are net positive',
-        body: 'Income ${weekIncome.toStringAsFixed(0)}, expense ${weekExpense.toStringAsFixed(0)}. Keep it up.',
+        body:
+            'Income ${weekIncome.toStringAsFixed(0)}, expense ${weekExpense.toStringAsFixed(0)}. Keep it up.',
       );
     }
 
     return DigestContent(
       title: 'Weekly digest: watch your spending',
-      body: 'Income ${weekIncome.toStringAsFixed(0)}, expense ${weekExpense.toStringAsFixed(0)}. Review top categories in Analytics.',
+      body:
+          'Income ${weekIncome.toStringAsFixed(0)}, expense ${weekExpense.toStringAsFixed(0)}. Review top categories in Analytics.',
     );
   }
 
@@ -88,7 +94,12 @@ class WeeklyDigestService {
         .fold<double>(0, (sum, tx) => sum + tx.amount);
   }
 
-  static DateTime _nextWeekday(DateTime from, int weekday, int hour, int minute) {
+  static DateTime _nextWeekday(
+    DateTime from,
+    int weekday,
+    int hour,
+    int minute,
+  ) {
     var d = DateTime(from.year, from.month, from.day, hour, minute);
     while (d.weekday % 7 != weekday || d.isBefore(from)) {
       d = d.add(const Duration(days: 1));

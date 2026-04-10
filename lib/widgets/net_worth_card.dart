@@ -37,7 +37,8 @@ class NetWorthService {
 
     final total = running;
     final prevMonth = DateTime(selectedMonth.year, selectedMonth.month - 1, 1);
-    final prevKey = '${prevMonth.year}-${prevMonth.month.toString().padLeft(2, '0')}';
+    final prevKey =
+        '${prevMonth.year}-${prevMonth.month.toString().padLeft(2, '0')}';
     final prevValue = monthly[prevKey] ?? 0;
 
     final spark = List<double>.generate(6, (i) {
@@ -77,8 +78,8 @@ class NetWorthCard extends StatelessWidget {
     final sparkColor = result.sparkPoints.isEmpty
         ? valueColor
         : (result.sparkPoints.last >= 0
-            ? (isDark ? AppTheme.darkIncome : AppTheme.incomeGreen)
-            : (isDark ? AppTheme.darkExpense : AppTheme.expenseRed));
+              ? (isDark ? AppTheme.darkIncome : AppTheme.incomeGreen)
+              : (isDark ? AppTheme.darkExpense : AppTheme.expenseRed));
 
     final lineSpots = result.sparkPoints
         .asMap()
@@ -99,7 +100,10 @@ class NetWorthCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Net Worth', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text(
+              'Net Worth',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             Text(
               '$currencySymbol${result.totalNetWorth.toStringAsFixed(2)}',
@@ -113,10 +117,7 @@ class NetWorthCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${result.delta >= 0 ? '↑' : '↓'} ${result.delta >= 0 ? '+' : ''}$currencySymbol${result.delta.toStringAsFixed(2)} vs last month',
-              style: TextStyle(
-                color: valueColor,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: valueColor, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
             SizedBox(

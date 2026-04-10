@@ -47,10 +47,7 @@ class DashboardBudgetCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                TextButton(
-                  onPressed: onManage,
-                  child: const Text('Manage'),
-                ),
+                TextButton(onPressed: onManage, child: const Text('Manage')),
               ],
             ),
             if (active.isEmpty)
@@ -103,8 +100,9 @@ class DashboardBudgetCard extends StatelessWidget {
                             value: value,
                             minHeight: 8,
                             borderRadius: BorderRadius.circular(99),
-                            backgroundColor:
-                                isDark ? AppTheme.darkField : AppTheme.divider,
+                            backgroundColor: isDark
+                                ? AppTheme.darkField
+                                : AppTheme.divider,
                             color: color,
                           ),
                         ),

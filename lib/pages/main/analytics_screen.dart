@@ -12,7 +12,6 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/health_score_gauge.dart';
 import '../../widgets/net_worth_card.dart';
 
-
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 

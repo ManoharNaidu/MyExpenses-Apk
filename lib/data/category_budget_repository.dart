@@ -59,9 +59,9 @@ class CategoryBudgetRepository {
       _budgets
         ..clear()
         ..addAll(
-          decoded
-              .whereType<Map>()
-              .map((e) => CategoryBudget.fromJson(Map<String, dynamic>.from(e))),
+          decoded.whereType<Map>().map(
+            (e) => CategoryBudget.fromJson(Map<String, dynamic>.from(e)),
+          ),
         );
       _emit();
     } catch (e) {
@@ -82,7 +82,10 @@ class CategoryBudgetRepository {
   static Future<void> fetchFromServer() async {
     if (_currentUserId == null) return;
     final res = await ApiClient.get('/category-budgets');
-    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to load category budgets');
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to load category budgets',
+    );
     if (res.body.isEmpty) {
       _budgets.clear();
       await _saveCache();
@@ -96,9 +99,9 @@ class CategoryBudgetRepository {
     _budgets
       ..clear()
       ..addAll(
-        decoded
-            .whereType<Map>()
-            .map((e) => CategoryBudget.fromJson(Map<String, dynamic>.from(e))),
+        decoded.whereType<Map>().map(
+          (e) => CategoryBudget.fromJson(Map<String, dynamic>.from(e)),
+        ),
       );
     _budgets.sort((a, b) => a.category.compareTo(b.category));
 
@@ -120,13 +123,18 @@ class CategoryBudgetRepository {
         .toList();
 
     final res = await ApiClient.put('/category-budgets', payload);
-    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to save category budgets');
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to save category budgets',
+    );
     await _saveCache();
     _emit();
   }
 
   static Future<void> updateBudget(CategoryBudget budget) async {
-    final existingIndex = _budgets.indexWhere((b) => b.category == budget.category);
+    final existingIndex = _budgets.indexWhere(
+      (b) => b.category == budget.category,
+    );
     if (existingIndex == -1) {
       _budgets.add(budget);
     } else {
@@ -145,7 +153,10 @@ class CategoryBudgetRepository {
 
     final encoded = Uri.encodeComponent(category);
     final res = await ApiClient.delete('/category-budgets/$encoded');
-    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to delete category budget');
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to delete category budget',
+    );
   }
 
   static Future<void> checkThresholds(
@@ -190,7 +201,8 @@ class CategoryBudgetRepository {
           await NotificationService.show(
             id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
             title: 'Budget exceeded',
-            body: '${budget.category}: ${spent.toStringAsFixed(2)} spent of ${budget.monthlyLimit.toStringAsFixed(2)}',
+            body:
+                '${budget.category}: ${spent.toStringAsFixed(2)} spent of ${budget.monthlyLimit.toStringAsFixed(2)}',
           );
         }
       }

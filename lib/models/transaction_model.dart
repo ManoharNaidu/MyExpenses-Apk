@@ -38,13 +38,14 @@ class TransactionModel {
   static List<String> extractTags(String? text) {
     if (text == null || text.isEmpty) return const [];
     final regex = RegExp(r'#(\w+)');
-    final tags = regex
-        .allMatches(text)
-        .map((m) => (m.group(1) ?? '').toLowerCase())
-        .where((t) => t.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final tags =
+        regex
+            .allMatches(text)
+            .map((m) => (m.group(1) ?? '').toLowerCase())
+            .where((t) => t.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     return tags;
   }
 

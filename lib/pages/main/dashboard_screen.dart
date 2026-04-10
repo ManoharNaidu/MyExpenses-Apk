@@ -133,7 +133,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 stream: CategoryBudgetRepository.getBudgetsStream(),
                 initialData: CategoryBudgetRepository.currentBudgets,
                 builder: (context, budgetSnapshot) {
-                  final budgets = budgetSnapshot.data ?? const <CategoryBudget>[];
+                  final budgets =
+                      budgetSnapshot.data ?? const <CategoryBudget>[];
                   unawaited(
                     CategoryBudgetRepository.checkThresholds(
                       txs,
