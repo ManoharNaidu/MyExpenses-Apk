@@ -39,7 +39,7 @@ class ApiClient {
   static final Dio _dio = _createDio();
   static String get _baseUrl {
     final envUrl = dotenv.get('API_URL', fallback: '');
-    
+
     // // In debug mode, we default to localhost unless explicitly overridden.
     // if (kDebugMode && (envUrl.isEmpty || envUrl.contains('onrender.com'))) {
     //   String target = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : 'localhost';
@@ -54,75 +54,100 @@ class ApiClient {
 
   static String get baseUrl => _baseUrl;
 
-  static const String genericUnexpectedMessage = 'Something unexpected happened. Please try again.';
+  static const String genericUnexpectedMessage =
+      'Something unexpected happened. Please try again.';
 
   static void setUnauthorizedCallback(UnauthorizedCallback cb) {
     _onUnauthorized = cb;
   }
 
   static Dio _createDio() {
-    final dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      responseType: ResponseType.plain,
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        responseType: ResponseType.plain,
+      ),
+    );
 
     dio.transformer = BackgroundTransformer()..jsonDecodeCallback = parseJson;
 
-    dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        if (!options.extra.containsKey('noAuth')) {
-          final token = await SecureStorage.readToken();
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          if (!options.extra.containsKey('noAuth')) {
+            final token = await SecureStorage.readToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
           }
-        }
-        return handler.next(options);
-      },
-      onError: (e, handler) async {
-        if (e.response?.statusCode == 401 && !e.requestOptions.extra.containsKey('noAuth')) {
-          await _handleUnauthorized();
-        }
-        return handler.next(e);
-      },
-    ));
+          return handler.next(options);
+        },
+        onError: (e, handler) async {
+          if (e.response?.statusCode == 401 &&
+              !e.requestOptions.extra.containsKey('noAuth') &&
+              !e.requestOptions.extra.containsKey('skipUnauthorizedHandler')) {
+            await _handleUnauthorized();
+          }
+          return handler.next(e);
+        },
+      ),
+    );
 
     return dio;
   }
 
   static Future<void> _handleUnauthorized() async {
-    debugPrint('🔒 401 received — clearing tokens');
-    await SecureStorage.clear();
+    debugPrint('🔒 401 received');
     if (_onUnauthorized != null) await _onUnauthorized!();
   }
 
-  static bool isSuccess(int statusCode) => statusCode >= 200 && statusCode < 300;
+  static bool isSuccess(int statusCode) =>
+      statusCode >= 200 && statusCode < 300;
 
-  static String extractErrorMessage(LegacyHttpResponse response, {String fallbackMessage = genericUnexpectedMessage}) {
+  static String extractErrorMessage(
+    LegacyHttpResponse response, {
+    String fallbackMessage = genericUnexpectedMessage,
+  }) {
     if (response.body.isEmpty) return fallbackMessage;
-    
+
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is Map) {
-         return decoded['message']?.toString() ?? decoded['detail']?.toString() ?? decoded['error']?.toString() ?? response.body;
+        return decoded['message']?.toString() ??
+            decoded['detail']?.toString() ??
+            decoded['error']?.toString() ??
+            response.body;
       }
-    } catch (_) { }
-    
-    return response.body; 
+    } catch (_) {}
+
+    return response.body;
   }
 
-  static void ensureSuccess(LegacyHttpResponse response, {String fallbackMessage = genericUnexpectedMessage}) {
+  static void ensureSuccess(
+    LegacyHttpResponse response, {
+    String fallbackMessage = genericUnexpectedMessage,
+  }) {
     if (isSuccess(response.statusCode)) return;
-    throw ApiException(extractErrorMessage(response, fallbackMessage: fallbackMessage), statusCode: response.statusCode);
+    throw ApiException(
+      extractErrorMessage(response, fallbackMessage: fallbackMessage),
+      statusCode: response.statusCode,
+    );
   }
 
-  static LegacyHttpResponse _wrap(Response? response, {String? defaultMessage}) {
+  static LegacyHttpResponse _wrap(
+    Response? response, {
+    String? defaultMessage,
+  }) {
     if (response == null) {
       final msg = defaultMessage ?? genericUnexpectedMessage;
       return LegacyHttpResponse(500, '{"message": "$msg"}');
     }
-    return LegacyHttpResponse(response.statusCode ?? 500, response.data?.toString() ?? '');
+    return LegacyHttpResponse(
+      response.statusCode ?? 500,
+      response.data?.toString() ?? '',
+    );
   }
 
   static String _dioErrorToMessage(DioException e) {
@@ -138,9 +163,17 @@ class ApiClient {
     }
   }
 
-  static Future<LegacyHttpResponse> post(String path, Object? body, {bool requiresAuth = true}) async {
+  static Future<LegacyHttpResponse> post(
+    String path,
+    Object? body, {
+    bool requiresAuth = true,
+  }) async {
     try {
-      final res = await _dio.post(path, data: body, options: Options(extra: requiresAuth ? {} : {'noAuth': true}));
+      final res = await _dio.post(
+        path,
+        data: body,
+        options: Options(extra: requiresAuth ? {} : {'noAuth': true}),
+      );
       return _wrap(res);
     } on DioException catch (e) {
       if (e.response != null) return _wrap(e.response);
@@ -148,9 +181,21 @@ class ApiClient {
     }
   }
 
-  static Future<LegacyHttpResponse> get(String path) async {
+  static Future<LegacyHttpResponse> get(
+    String path, {
+    bool suppressUnauthorizedHandler = false,
+    bool requiresAuth = true,
+  }) async {
     try {
-      final res = await _dio.get(path);
+      final res = await _dio.get(
+        path,
+        options: Options(
+          extra: {
+            if (!requiresAuth) 'noAuth': true,
+            if (suppressUnauthorizedHandler) 'skipUnauthorizedHandler': true,
+          },
+        ),
+      );
       return _wrap(res);
     } on DioException catch (e) {
       if (e.response != null) return _wrap(e.response);
@@ -188,22 +233,22 @@ class ApiClient {
     try {
       Object? fileTarget;
       if (fileBytes != null) {
-        fileTarget = MultipartFile.fromBytes(fileBytes, filename: fileName ?? 'upload.pdf');
+        fileTarget = MultipartFile.fromBytes(
+          fileBytes,
+          filename: fileName ?? 'upload.pdf',
+        );
       } else if (filePath != null) {
         fileTarget = await MultipartFile.fromFile(filePath, filename: fileName);
       } else {
         return LegacyHttpResponse(400, '{"error": "No file provided"}');
       }
 
-      final formData = FormData.fromMap({
-        ...?fields,
-        fieldName: fileTarget,
-      });
+      final formData = FormData.fromMap({...?fields, fieldName: fileTarget});
 
       final res = await _dio.post(
-        path, 
-        data: formData, 
-        options: Options(extra: requiresAuth ? {} : {'noAuth': true})
+        path,
+        data: formData,
+        options: Options(extra: requiresAuth ? {} : {'noAuth': true}),
       );
       return _wrap(res);
     } on DioException catch (e) {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
+import 'email_verification_page.dart';
 
 class RegisterForm extends ConsumerStatefulWidget {
   const RegisterForm({super.key});
@@ -34,11 +35,29 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
 
     try {
       final email = _emailController.text.trim();
-      await ref.read(authProvider).register(
-        name: _nameController.text.trim(),
-        email: email,
-        password: _passwordController.text,
-      );
+      await ref
+          .read(authProvider)
+          .register(
+            name: _nameController.text.trim(),
+            email: email,
+            password: _passwordController.text,
+          );
+
+      if (mounted) {
+        await showAppFeedbackDialog(
+          context,
+          title: 'Registration Successful',
+          message: 'We sent a verification code to your email.',
+          type: AppFeedbackType.success,
+        );
+
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EmailVerificationPage(email: email),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         await showAppFeedbackDialog(
@@ -143,6 +162,9 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your password';
               }
+              if (value.length < 8) {
+                return 'Password must be at least 8 characters';
+              }
               return null;
             },
           ),
@@ -167,7 +189,9 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.textDark),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.textDark,
+                        ),
                       ),
                     )
                   : const Text(

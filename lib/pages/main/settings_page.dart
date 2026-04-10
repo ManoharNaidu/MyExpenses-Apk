@@ -37,13 +37,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   // ─── Design system colors (Figma-aligned) ───
   static const _indigo = Color(0xFF4F46E5);
-  static const _indigoLight = Color(0xFFE0E7FF);
   static const _bgLight = Color(0xFFF8F9FA);
   static const _cardBg = Colors.white;
   static const _fieldBg = Color(0xFFF3F4F6);
   static const _textPrimary = Color(0xFF111827);
   static const _textSecondary = Color(0xFF6B7280);
-  static const _green = Color(0xFF22C55E);
   static const _red = Color(0xFFEF4444);
   static const _divider = Color(0xFFF3F4F6);
 
@@ -420,7 +418,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _sectionCard(
             card: card,
             children: [
-              _sectionHeader(Icons.stacked_bar_chart_rounded, 'Financial Tools', textPri),
+              _sectionHeader(
+                Icons.stacked_bar_chart_rounded,
+                'Financial Tools',
+                textPri,
+              ),
               const SizedBox(height: 8),
               _navRow(
                 icon: Icons.account_balance_wallet_outlined,
@@ -745,28 +747,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (!context.mounted) return;
 
       if (txs.isEmpty) {
-        await showAppFeedbackDialog(context,
-            title: 'No Data',
-            message: 'No transactions to export.',
-            type: AppFeedbackType.error);
+        await showAppFeedbackDialog(
+          context,
+          title: 'No Data',
+          message: 'No transactions to export.',
+          type: AppFeedbackType.error,
+        );
         return;
       }
 
       // Optional date range prompt
       final useRange = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-                title: Text('Export ${format.toUpperCase()}'),
-                content: const Text('Export all transactions or select a date range?'),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('All')),
-                  FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Date range')),
-                ],
-              ));
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Export ${format.toUpperCase()}'),
+          content: const Text(
+            'Export all transactions or select a date range?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('All'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Date range'),
+            ),
+          ],
+        ),
+      );
       if (!context.mounted) return;
 
       List<TransactionModel> toExport = txs;
@@ -796,30 +805,36 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
         if (toExport.isEmpty) {
           if (!context.mounted) return;
-          await showAppFeedbackDialog(context,
-              title: 'No data in range',
-              message: 'No transactions fall within the selected date range.',
-              type: AppFeedbackType.error);
+          await showAppFeedbackDialog(
+            context,
+            title: 'No data in range',
+            message: 'No transactions fall within the selected date range.',
+            type: AppFeedbackType.error,
+          );
           return;
         }
       }
 
       final result = await CsvExport.exportTransactions(toExport);
       if (!context.mounted) return;
-      await showAppFeedbackDialog(context,
-          title: format == 'pdf' ? 'Export Ready' : 'CSV Exported',
-          message: format == 'pdf'
-              ? 'Select a PDF app from the share sheet to save as PDF.'
-              : result.openedShareSheet
-                  ? 'Choose where to save the CSV file.'
-                  : 'CSV exported successfully.',
-          type: AppFeedbackType.success);
+      await showAppFeedbackDialog(
+        context,
+        title: format == 'pdf' ? 'Export Ready' : 'CSV Exported',
+        message: format == 'pdf'
+            ? 'Select a PDF app from the share sheet to save as PDF.'
+            : result.openedShareSheet
+            ? 'Choose where to save the CSV file.'
+            : 'CSV exported successfully.',
+        type: AppFeedbackType.success,
+      );
     } catch (e) {
       if (!context.mounted) return;
-      await showAppFeedbackDialog(context,
-          title: 'Export Failed',
-          message: '$e',
-          type: AppFeedbackType.error);
+      await showAppFeedbackDialog(
+        context,
+        title: 'Export Failed',
+        message: '$e',
+        type: AppFeedbackType.error,
+      );
     }
   }
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
@@ -11,7 +10,6 @@ import 'history_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_page.dart';
 import '../../data/transaction_repository.dart';
-import '../../models/transaction_model.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import '../../widgets/add_transaction_modal.dart';
 import '../../core/api/pdf_upload_provider.dart';
@@ -42,7 +40,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _fabScale = CurvedAnimation(parent: _fabController, curve: Curves.elasticOut);
+    _fabScale = CurvedAnimation(
+      parent: _fabController,
+      curve: Curves.elasticOut,
+    );
     _fabController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowFirstRunGuide();
@@ -175,7 +176,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
                                 value: (currentStep + 1) / steps.length,
-                                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.3,
+                                ),
                                 color: AppTheme.accent,
                                 minHeight: 6,
                               ),
@@ -190,22 +193,30 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 260),
-                          transitionBuilder: (child, animation) => FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.05, 0),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                  parent: animation, curve: Curves.easeOut)),
-                              child: child,
-                            ),
-                          ),
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position:
+                                      Tween<Offset>(
+                                        begin: const Offset(0.05, 0),
+                                        end: Offset.zero,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeOut,
+                                        ),
+                                      ),
+                                  child: child,
+                                ),
+                              ),
                           child: Container(
                             key: ValueKey(currentStep),
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Theme.of(dialogContext).colorScheme.primary,
+                              color: Theme.of(
+                                dialogContext,
+                              ).colorScheme.primary,
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
@@ -224,12 +235,17 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                                     color: Colors.white.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Icon(step.icon, color: Colors.white, size: 26),
+                                  child: Icon(
+                                    step.icon,
+                                    color: Colors.white,
+                                    size: 26,
+                                  ),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
@@ -244,7 +260,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                                       Text(
                                         step.message,
                                         style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.88),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.88,
+                                          ),
                                           height: 1.5,
                                         ),
                                       ),
@@ -266,11 +284,16 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                             if (!isFirst)
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: () => setState(() => currentStep--),
+                                  onPressed: () =>
+                                      setState(() => currentStep--),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.white,
-                                    side: const BorderSide(color: Colors.white54),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    side: const BorderSide(
+                                      color: Colors.white54,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -292,12 +315,19 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppTheme.accent,
                                   foregroundColor: AppTheme.textDark,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: Text(step.cta, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                child: Text(
+                                  step.cta,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -329,11 +359,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
         );
       },
     );
-  }
-
-  Future<void> _openSettings() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const SettingsPage()));
   }
 
   Future<void> _showCurrencyPicker() async {
@@ -427,7 +452,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     SettingsPage(),
   ];
 
-  final _titles = ['My Expenses', 'History', 'Analytics', 'Settings'];
+  final _titles = ['', 'History', 'Analytics', 'Settings'];
 
   @override
   Widget build(BuildContext context) {
@@ -437,9 +462,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     final currencyOption = currencyFromCode(currency);
     final theme = Theme.of(context);
 
-    final bottomBarColor = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFFDFCF2);
-    final bottomBarIconSelected = isDark ? AppTheme.darkTextPrimary : AppTheme.textDark;
-    final bottomBarIconUnselected = isDark ? AppTheme.darkTextSecondary : AppTheme.textSoft;
+    final bottomBarColor = isDark
+        ? const Color(0xFF1A1A1A)
+        : const Color(0xFFFDFCF2);
+    final bottomBarIconSelected = isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.textDark;
+    final bottomBarIconUnselected = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.textSoft;
 
     return Scaffold(
       appBar: AppBar(
@@ -455,7 +486,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                     children: [
                       Icon(
                         Icons.currency_exchange_rounded,
-                        color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+                        color: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.textDark,
                         size: 20,
                       ),
                       const SizedBox(width: 6),
@@ -465,7 +498,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+                            color: isDark
+                                ? AppTheme.darkTextPrimary
+                                : AppTheme.textDark,
                           ),
                         ),
                       ),
@@ -474,13 +509,15 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                 ),
               )
             : null,
-        title: Text(
-          _titles[index],
-          style: TextStyle(
-            color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        title: _titles[index].isEmpty
+            ? null
+            : Text(
+                _titles[index],
+                style: TextStyle(
+                  color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
         actions: [
           // Sync button only
           StreamBuilder<int>(
@@ -505,7 +542,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                           syncing
                               ? Icons.sync_rounded
                               : Icons.cloud_upload_outlined,
-                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.textDark,
                         ),
                       ),
                       if (!syncing && pending > 0)
@@ -546,17 +585,20 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
           child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.05),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, 0.05),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           ),
         ),
-        child: KeyedSubtree(
-          key: ValueKey(index),
-          child: _pages[index],
-        ),
+        child: KeyedSubtree(key: ValueKey(index), child: _pages[index]),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: ScaleTransition(
@@ -582,15 +624,35 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(0, Icons.dashboard_rounded, 'Home',
-                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
-            _buildNavItem(1, Icons.history_rounded, 'History',
-                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
+            _buildNavItem(
+              0,
+              Icons.dashboard_rounded,
+              'Home',
+              selected: bottomBarIconSelected,
+              unselected: bottomBarIconUnselected,
+            ),
+            _buildNavItem(
+              1,
+              Icons.history_rounded,
+              'History',
+              selected: bottomBarIconSelected,
+              unselected: bottomBarIconUnselected,
+            ),
             const SizedBox(width: 40),
-            _buildNavItem(2, Icons.bar_chart_rounded, 'Analytics',
-                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
-            _buildNavItem(3, Icons.settings_rounded, 'Settings',
-                selected: bottomBarIconSelected, unselected: bottomBarIconUnselected),
+            _buildNavItem(
+              2,
+              Icons.bar_chart_rounded,
+              'Analytics',
+              selected: bottomBarIconSelected,
+              unselected: bottomBarIconUnselected,
+            ),
+            _buildNavItem(
+              3,
+              Icons.settings_rounded,
+              'Settings',
+              selected: bottomBarIconSelected,
+              unselected: bottomBarIconUnselected,
+            ),
           ],
         ),
       ),
@@ -760,10 +822,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             const SizedBox(height: 12),
             Text(
               label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(color: color, fontWeight: FontWeight.w700),
             ),
           ],
         ),

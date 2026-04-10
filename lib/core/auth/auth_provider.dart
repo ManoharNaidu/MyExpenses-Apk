@@ -23,7 +23,19 @@ class AuthProvider extends ChangeNotifier {
     // Register global 401 handler so any expired/revoked token anywhere
     // in the app automatically clears the session and routes to login.
     ApiClient.setUnauthorizedCallback(() async {
-      await logout();
+      final token = await SecureStorage.readToken();
+      if (token == null) {
+        await logout();
+        return;
+      }
+
+      final stillValid = await _refreshSessionFromServer(
+        timeout: const Duration(seconds: 6),
+        notify: true,
+      );
+      if (!stillValid) {
+        await logout();
+      }
     });
   }
 
@@ -241,7 +253,10 @@ class AuthProvider extends ChangeNotifier {
     bool notify = true,
   }) async {
     try {
-      final res = await ApiClient.get('/auth/me').timeout(timeout);
+      final res = await ApiClient.get(
+        '/auth/me',
+        suppressUnauthorizedHandler: true,
+      ).timeout(timeout);
       if (res.statusCode != 200 || res.body.isEmpty) return false;
 
       final data = jsonDecode(res.body);
@@ -326,7 +341,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     try {
-      debugPrint("🔐 Attempting login for: $email, $password at ${ApiClient.baseUrl}");
+      debugPrint(
+        "🔐 Attempting login for: $email, $password at ${ApiClient.baseUrl}",
+      );
       final res = await ApiClient.post("/auth/login", {
         "email": email,
         "password": password,
@@ -563,10 +580,7 @@ class AuthProvider extends ChangeNotifier {
         "email": newEmail,
       });
 
-      ApiClient.ensureSuccess(
-        res,
-        fallbackMessage: 'Failed to update email',
-      );
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to update email');
 
       _state = _copyState(userEmail: newEmail);
       await _saveProfileCache();
@@ -581,14 +595,12 @@ class AuthProvider extends ChangeNotifier {
   Future<void> deleteAccount(String password) async {
     try {
       debugPrint("⚠️ Deleting account...");
-      final res = await ApiClient.delete("/auth/account", data: {
-        "password": password,
-      });
-
-      ApiClient.ensureSuccess(
-        res,
-        fallbackMessage: 'Failed to delete account',
+      final res = await ApiClient.delete(
+        "/auth/account",
+        data: {"password": password},
       );
+
+      ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to delete account');
 
       await logout();
       debugPrint("✅ Account deleted and user logged out");

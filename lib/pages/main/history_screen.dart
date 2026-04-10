@@ -238,6 +238,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             message:
                                 'Add your first transaction or upload a bank PDF from the Dashboard.',
                             actionLabel: 'Add transaction',
+                            showActionIcon: false,
                             onAction: () => showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
@@ -253,6 +254,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             message:
                                 'No transactions match your filters or search. Try changing filters or search term.',
                             actionLabel: 'Clear search & filters',
+                            showActionIcon: false,
                             onAction: () {
                               setState(() {
                                 typeFilter = "All";

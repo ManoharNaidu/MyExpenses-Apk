@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../models/budget_model.dart';
 import '../models/transaction_model.dart';
-import 'health_score.dart';
+import '../models/health_score.dart';
 
 class HealthScoreService {
   /// Entry point to calculate health score for a specific month.
@@ -27,12 +27,24 @@ class HealthScoreService {
 
     final monthKey = DateFormat('yyyy-MM').format(targetMonth);
     final monthStart = DateTime(targetMonth.year, targetMonth.month, 1);
-    final monthEnd = DateTime(targetMonth.year, targetMonth.month + 1, 0, 23, 59, 59);
+    final monthEnd = DateTime(
+      targetMonth.year,
+      targetMonth.month + 1,
+      0,
+      23,
+      59,
+      59,
+    );
 
     // Filter current month data
-    final currentTxs = transactions.where((tx) => 
-      !tx.date.isBefore(monthStart) && !tx.date.isAfter(monthEnd) && tx.description != null
-    ).toList();
+    final currentTxs = transactions
+        .where(
+          (tx) =>
+              !tx.date.isBefore(monthStart) &&
+              !tx.date.isAfter(monthEnd) &&
+              tx.description != null,
+        )
+        .toList();
 
     double income = 0;
     double expense = 0;
@@ -61,30 +73,49 @@ class HealthScoreService {
     if (activeBudgets.isNotEmpty) {
       int overCount = 0;
       for (var b in activeBudgets) {
-        if ((catSpending[b.category] ?? 0) > b.amount) overCount++;
+        if ((catSpending[b.category] ?? 0) > b.monthlyLimit) overCount++;
       }
-      budgetAdherence = (activeBudgets.length - overCount) / activeBudgets.length;
+      budgetAdherence =
+          (activeBudgets.length - overCount) / activeBudgets.length;
       budgetPoints = (budgetAdherence * 25).round();
     }
 
     // 3. Spend Trends (20 pts)
     // Compare current expense vs average of last 3 months
-    double avgPastExpense = _getAverageMetric(transactions, targetMonth, 3, TxType.expense);
+    double avgPastExpense = _getAverageMetric(
+      transactions,
+      targetMonth,
+      3,
+      TxType.expense,
+    );
     double spendVsAverage = avgPastExpense > 0 ? expense / avgPastExpense : 1.0;
     int trendPoints = 0;
-    if (spendVsAverage <= 0.9) trendPoints = 20;
-    else if (spendVsAverage <= 1.0) trendPoints = 15;
-    else if (spendVsAverage <= 1.2) trendPoints = 5;
+    if (spendVsAverage <= 0.9)
+      trendPoints = 20;
+    else if (spendVsAverage <= 1.0)
+      trendPoints = 15;
+    else if (spendVsAverage <= 1.2)
+      trendPoints = 5;
 
     // 4. Consistency (15 pts)
     // 10+ days of tracking = full points
     int consistencyPoints = (activeDays.length / 10 * 15).clamp(0, 15).round();
 
     // 5. Income Growth (10 pts)
-    double avgPastIncome = _getAverageMetric(transactions, targetMonth, 3, TxType.income);
+    double avgPastIncome = _getAverageMetric(
+      transactions,
+      targetMonth,
+      3,
+      TxType.income,
+    );
     int growthPoints = (avgPastIncome > 0 && income >= avgPastIncome) ? 10 : 0;
 
-    int total = savingsPoints + budgetPoints + trendPoints + consistencyPoints + growthPoints;
+    int total =
+        savingsPoints +
+        budgetPoints +
+        trendPoints +
+        consistencyPoints +
+        growthPoints;
 
     return HealthScore(
       totalScore: total,
@@ -102,18 +133,26 @@ class HealthScoreService {
     );
   }
 
-  static double _getAverageMetric(List<TransactionModel> txs, DateTime targetMonth, int monthsBack, TxType type) {
+  static double _getAverageMetric(
+    List<TransactionModel> txs,
+    DateTime targetMonth,
+    int monthsBack,
+    TxType type,
+  ) {
     double total = 0;
     int count = 0;
     for (int i = 1; i <= monthsBack; i++) {
       final m = DateTime(targetMonth.year, targetMonth.month - i, 1);
       final start = DateTime(m.year, m.month, 1);
       final end = DateTime(m.year, m.month + 1, 0, 23, 59, 59);
-      
+
       double sum = 0;
       bool found = false;
       for (var tx in txs) {
-        if (!tx.date.isBefore(start) && !tx.date.isAfter(end) && tx.type == type && tx.description != null) {
+        if (!tx.date.isBefore(start) &&
+            !tx.date.isAfter(end) &&
+            tx.type == type &&
+            tx.description != null) {
           sum += tx.amount;
           found = true;
         }

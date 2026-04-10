@@ -1,161 +1,323 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/widgets/mesh_background.dart';
-import 'widgets/dashboard_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
-class DashboardScreen extends StatelessWidget {
+import '../../app/theme.dart';
+import '../../core/auth/auth_provider.dart';
+import '../../core/constants/currencies.dart';
+import '../../data/transaction_repository.dart';
+import '../../models/transaction_model.dart';
+import '../../widgets/empty_state.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    TransactionRepository.ensureInitialized();
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(DateTime.now().year + 2, 12, 31),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: 'Select month',
+    );
+    if (picked == null) return;
+
+    setState(() {
+      _selectedMonth = DateTime(picked.year, picked.month, 1);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: MeshBackground(
-        child: SafeArea(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: PremiumHeader(
-                  userName: 'Alex',
-                  onProfileTap: () {},
+    final auth = ref.watch(authProvider).state;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final userName = (auth.userName == null || auth.userName!.trim().isEmpty)
+        ? 'there'
+        : auth.userName!.trim();
+
+    final currencySymbol = currencyFromCode(auth.effectiveCurrency).symbol;
+
+    return StreamBuilder<List<TransactionModel>>(
+      stream: TransactionRepository.getTransactionsStream(),
+      initialData: TransactionRepository.currentTransactions,
+      builder: (context, snapshot) {
+        final txs = snapshot.data ?? const <TransactionModel>[];
+
+        final start = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+        final end = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+
+        final selectedTxs = txs.where((tx) {
+          return !tx.date.isBefore(start) && tx.date.isBefore(end);
+        }).toList();
+
+        double income = 0;
+        double expenses = 0;
+        for (final tx in selectedTxs) {
+          if (tx.type == TxType.income) {
+            income += tx.amount;
+          } else {
+            expenses += tx.amount;
+          }
+        }
+
+        final savings = income - expenses;
+        final daysInMonth = DateTime(
+          _selectedMonth.year,
+          _selectedMonth.month + 1,
+          0,
+        ).day;
+        final dailyAverage = daysInMonth == 0 ? 0.0 : expenses / daysInMonth;
+
+        final topFive = List<TransactionModel>.from(selectedTxs)
+          ..sort((a, b) => b.date.compareTo(a.date));
+        if (topFive.length > 5) {
+          topFive.removeRange(5, topFive.length);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () =>
+              TransactionRepository.loadInitial(forceRefresh: true),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+            children: [
+              Text(
+                'Welcome, $userName',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 10)),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 180,
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    children: const [
-                      PremiumStatCard(
-                        title: 'Total Balance',
-                        amount: '\$12,450.00',
-                        icon: Icons.wallet_rounded,
-                        color: AppColors.pureMint,
+              const SizedBox(height: 12),
+              _netDisposableCard(
+                isDark: isDark,
+                monthLabel: DateFormat('MMMM yyyy').format(_selectedMonth),
+                currencySymbol: currencySymbol,
+                income: income,
+                expenses: expenses,
+                dailyAverage: dailyAverage,
+                savings: savings,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Recent Activity (${DateFormat('MMM yyyy').format(_selectedMonth)})',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (topFive.isEmpty)
+                const EmptyState(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'No transactions for this month',
+                  message:
+                      'Use the + button in the footer to add transactions.',
+                )
+              else
+                ...topFive.map(
+                  (tx) => Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: tx.type == TxType.income
+                            ? Colors.green.withValues(alpha: 0.15)
+                            : Colors.orange.withValues(alpha: 0.15),
+                        child: Icon(
+                          tx.type == TxType.income
+                              ? Icons.arrow_downward_rounded
+                              : Icons.arrow_upward_rounded,
+                          color: tx.type == TxType.income
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
                       ),
-                      PremiumStatCard(
-                        title: 'Income',
-                        amount: '\$4,200.00',
-                        icon: Icons.arrow_upward_rounded,
-                        color: AppColors.income,
+                      title: Text(tx.category),
+                      subtitle: Text(
+                        tx.notes?.trim().isNotEmpty == true
+                            ? tx.notes!
+                            : DateFormat('dd MMM yyyy').format(tx.date),
                       ),
-                      PremiumStatCard(
-                        title: 'Expenses',
-                        amount: '\$1,850.00',
-                        icon: Icons.arrow_downward_rounded,
-                        color: AppColors.expense,
+                      trailing: Text(
+                        '${tx.type == TxType.income ? '+' : '-'}$currencySymbol${tx.amount.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: tx.type == TxType.income
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GlassyQuickAction(
-                        icon: Icons.add_rounded,
-                        label: 'Add',
-                        color: Colors.blueAccent,
-                        onTap: () {},
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _netDisposableCard({
+    required bool isDark,
+    required String monthLabel,
+    required String currencySymbol,
+    required double income,
+    required double expenses,
+    required double dailyAverage,
+    required double savings,
+  }) {
+    final disposable = income - expenses;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF2B2B31), const Color(0xFF1D1F24)]
+              : [const Color(0xFFFFF7E5), const Color(0xFFFFEFD6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Net Disposable',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.textDark,
                       ),
-                      GlassyQuickAction(
-                        icon: Icons.receipt_long_rounded,
-                        label: 'Bills',
-                        color: Colors.orangeAccent,
-                        onTap: () {},
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      monthLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.textSoft,
                       ),
-                      GlassyQuickAction(
-                        icon: Icons.analytics_rounded,
-                        label: 'Report',
-                        color: Colors.purpleAccent,
-                        onTap: () {},
-                      ),
-                      GlassyQuickAction(
-                        icon: Icons.qr_code_scanner_rounded,
-                        label: 'Scan',
-                        color: AppColors.pureMint,
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SectionHeader(
-                  title: 'Recent Activity',
-                  onActionTap: () {},
+              IconButton(
+                tooltip: 'Select month',
+                onPressed: _pickMonth,
+                icon: const Icon(Icons.calendar_month_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$currencySymbol${disposable.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: disposable >= 0 ? Colors.green : Colors.red,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _metricItem(
+                  label: 'Income',
+                  value: '$currencySymbol${income.toStringAsFixed(2)}',
+                  icon: Icons.south_west_rounded,
                 ),
               ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final items = [
-                      {
-                        'title': 'Apple Music',
-                        'category': 'Subscription',
-                        'amount': '9.99',
-                        'date': 'Today, 10:00 AM',
-                        'icon': Icons.music_note_rounded,
-                        'color': Colors.redAccent,
-                        'isIncome': false,
-                      },
-                      {
-                        'title': 'Salary Credit',
-                        'category': 'Work',
-                        'amount': '3,500.00',
-                        'date': 'Yesterday',
-                        'icon': Icons.payments_rounded,
-                        'color': AppColors.income,
-                        'isIncome': true,
-                      },
-                      {
-                        'title': 'Starbucks Coffee',
-                        'category': 'Food & Drink',
-                        'amount': '15.50',
-                        'date': 'Yesterday',
-                        'icon': Icons.coffee_rounded,
-                        'color': Colors.brown,
-                        'isIncome': false,
-                      },
-                      {
-                        'title': 'Amazon Order',
-                        'category': 'Shopping',
-                        'amount': '120.00',
-                        'date': '2 days ago',
-                        'icon': Icons.shopping_bag_rounded,
-                        'color': Colors.orange,
-                        'isIncome': false,
-                      },
-                    ];
-                    
-                    if (index >= items.length) return null;
-                    final item = items[index];
-                    
-                    return PremiumTransactionTile(
-                      title: item['title'] as String,
-                      category: item['category'] as String,
-                      amount: item['amount'] as String,
-                      date: item['date'] as String,
-                      icon: item['icon'] as IconData,
-                      iconColor: item['color'] as Color,
-                      isIncome: item['isIncome'] as bool,
-                    );
-                  },
-                  childCount: 4,
+              Expanded(
+                child: _metricItem(
+                  label: 'Expenses',
+                  value: '$currencySymbol${expenses.toStringAsFixed(2)}',
+                  icon: Icons.north_east_rounded,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _metricItem(
+                  label: 'Daily Average',
+                  value: '$currencySymbol${dailyAverage.toStringAsFixed(2)}',
+                  icon: Icons.insights_rounded,
+                ),
+              ),
+              Expanded(
+                child: _metricItem(
+                  label: 'Savings',
+                  value: '$currencySymbol${savings.toStringAsFixed(2)}',
+                  icon: Icons.savings_rounded,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricItem({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                value,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

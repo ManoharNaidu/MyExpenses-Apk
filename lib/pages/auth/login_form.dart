@@ -5,6 +5,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import 'forgot_password_page.dart';
+import 'email_verification_page.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({super.key});
@@ -33,11 +34,30 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authProvider).login(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+      await ref
+          .read(authProvider)
+          .login(_emailController.text.trim(), _passwordController.text);
     } catch (e) {
+      final message = e.toString().toLowerCase();
+      if (mounted && message.contains('not verified')) {
+        await showAppFeedbackDialog(
+          context,
+          title: 'Email Verification Required',
+          message:
+              'Your account is not verified yet. Please enter the 6-digit code sent to your email.',
+          type: AppFeedbackType.error,
+        );
+
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                EmailVerificationPage(email: _emailController.text.trim()),
+          ),
+        );
+        return;
+      }
+
       if (mounted) {
         await showAppFeedbackDialog(
           context,
@@ -159,7 +179,9 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.textDark),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.textDark,
+                        ),
                       ),
                     )
                   : const Text(
