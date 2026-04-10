@@ -133,15 +133,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             filtered.length + ((hasMore || isLoading) ? 1 : 0);
 
         return Scaffold(
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              showDragHandle: true,
-              builder: (_) => AddTransactionModal(onSaved: () {}),
-            ),
-            child: const Icon(Icons.add_rounded),
-          ),
           body: RefreshIndicator(
             onRefresh: () =>
                 TransactionRepository.loadInitial(forceRefresh: true),
