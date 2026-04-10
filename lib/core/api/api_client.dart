@@ -40,13 +40,13 @@ class ApiClient {
   static String get _baseUrl {
     final envUrl = dotenv.get('API_URL', fallback: '');
     
-    // In debug mode, we default to localhost unless explicitly overridden.
-    if (kDebugMode && (envUrl.isEmpty || envUrl.contains('onrender.com'))) {
-      String target = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : 'localhost';
-      final localUrl = 'http://$target:8000/api/v1';
-      debugPrint('DEBUG MODE: Overriding $envUrl to local backend: $localUrl');
-      return localUrl;
-    }
+    // // In debug mode, we default to localhost unless explicitly overridden.
+    // if (kDebugMode && (envUrl.isEmpty || envUrl.contains('onrender.com'))) {
+    //   String target = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : 'localhost';
+    //   final localUrl = 'http://$target:8000/api/v1';
+    //   debugPrint('DEBUG MODE: Overriding $envUrl to local backend: $localUrl');
+    //   return localUrl;
+    // }
 
     if (envUrl.isNotEmpty) return envUrl;
     return 'https://my-expenses-backend-fastapi.onrender.com/api/v1';
