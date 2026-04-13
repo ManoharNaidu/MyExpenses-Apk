@@ -58,12 +58,22 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
 
   Future<void> _maybeShowFirstRunGuide() async {
     if (!mounted || _hasCheckedFirstRunGuide) return;
-    _hasCheckedFirstRunGuide = true;
 
     final authState = ref.read(authProvider).state;
     if (!authState.isLoggedIn || !authState.isOnboarded) return;
 
-    final userKey = (authState.userId ?? authState.userEmail ?? 'user').trim();
+    // Use a stable key for the guide. userId is preferred.
+    final userKey = (authState.userId ?? authState.userEmail)?.trim();
+    if (userKey == null || userKey.isEmpty) {
+      // If we don't have a stable ID yet, wait a bit and retry once.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      return _maybeShowFirstRunGuide();
+    }
+
+    // Now mark as checked so we don't double-trigger if we wait
+    _hasCheckedFirstRunGuide = true;
+
     final storageKey = '$_guideSeenPrefix$userKey';
     final hasSeen = await SecureStorage.readString(storageKey);
 
