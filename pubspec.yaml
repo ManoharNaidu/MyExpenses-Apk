@@ -49,7 +49,4 @@ flutter:
   assets:
     - assets/icon/
     - .env
-  # NOTE: .env is intentionally NOT listed here.
-  # API_URL is injected at build time via --dart-define=API_URL=https://...
-  # or flutter_dotenv loads it from .env in DEBUG builds only.
-  # See lib/core/api/api_client.dart for usage.
+

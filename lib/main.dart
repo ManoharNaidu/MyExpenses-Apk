@@ -15,7 +15,6 @@ void main() async {
   await dotenv.load(fileName: '.env');
   tz.initializeTimeZones();
   debugPrint('ENV LOADED: ${dotenv.env}');
-  // debugPrint('RESOLVED BASE URL: ${ApiClient.baseUrl}');
 
   runApp(const ProviderScope(child: MyExpensesApp()));
   unawaited(NotificationService.initialize());
