@@ -14,7 +14,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
   tz.initializeTimeZones();
-  debugPrint('ENV LOADED: ${dotenv.env}');
 
   runApp(const ProviderScope(child: MyExpensesApp()));
   unawaited(NotificationService.initialize());

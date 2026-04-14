@@ -33,6 +33,14 @@ class PdfUploadState {
 class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
   PdfUploadNotifier() : super(PdfUploadState());
 
+  Future<List<StagedTransactionDraft>> _loadStagedDraftsFromServer() async {
+    final res = await ApiClient.get('/staging');
+    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to load staged transactions');
+
+    final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
+    return StagedTransactionDraft.fromUploadResponse(decoded);
+  }
+
   Future<void> pickAndUpload() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -60,12 +68,21 @@ class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
 
       final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
       final drafts = StagedTransactionDraft.fromUploadResponse(decoded);
+      final needsFallback = drafts.isEmpty ||
+          drafts.every((draft) => (draft.stagingId ?? '').trim().isEmpty);
 
-      if (drafts.isNotEmpty) {
-        await StagedDraftRepository.upsertDrafts(drafts);
+      final resolvedDrafts = needsFallback
+          ? await _loadStagedDraftsFromServer()
+          : drafts;
+
+      if (resolvedDrafts.isNotEmpty) {
+        await StagedDraftRepository.upsertDrafts(resolvedDrafts);
       }
 
-      state = state.copyWith(isUploading: false, lastExtracted: drafts);
+      state = state.copyWith(
+        isUploading: false,
+        lastExtracted: resolvedDrafts,
+      );
     } catch (e) {
       state = state.copyWith(isUploading: false, error: e.toString());
     }

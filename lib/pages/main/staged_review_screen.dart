@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
 import '../../data/staged_draft_repository.dart';
@@ -20,6 +23,40 @@ class StagedReviewScreen extends ConsumerStatefulWidget {
 
 class _StagedReviewScreenState extends ConsumerState<StagedReviewScreen> {
   bool _isConfirming = false;
+  bool _isLoadingServer = false;
+  String? _loadError;
+
+  @override
+  void initState() {
+    super.initState();
+    _hydrateFromServer();
+  }
+
+  Future<void> _hydrateFromServer() async {
+    if (_isLoadingServer) return;
+    setState(() {
+      _isLoadingServer = true;
+      _loadError = null;
+    });
+
+    try {
+      final res = await ApiClient.get('/staging');
+      ApiClient.ensureSuccess(
+        res,
+        fallbackMessage: 'Failed to load staged transactions',
+      );
+      final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
+      final drafts = StagedTransactionDraft.fromUploadResponse(decoded);
+      await StagedDraftRepository.saveDrafts(drafts);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadError = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingServer = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,14 +72,39 @@ class _StagedReviewScreenState extends ConsumerState<StagedReviewScreen> {
         builder: (context, snapshot) {
           final drafts = snapshot.data ?? const <StagedTransactionDraft>[];
 
+          if (_isLoadingServer && drafts.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           if (drafts.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(20),
-              child: EmptyState(
-                icon: Icons.playlist_remove_rounded,
-                title: 'No staged transactions',
-                message:
-                    'Upload a bank PDF from Dashboard and extracted rows will appear here for review.',
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const EmptyState(
+                    icon: Icons.playlist_remove_rounded,
+                    title: 'No staged transactions',
+                    message:
+                        'Upload a bank PDF from Dashboard and extracted rows will appear here for review.',
+                  ),
+                  if (_loadError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _loadError!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _hydrateFromServer,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Refresh from server'),
+                  ),
+                ],
               ),
             );
           }
@@ -75,19 +137,22 @@ class _StagedReviewScreenState extends ConsumerState<StagedReviewScreen> {
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  itemCount: drafts.length,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  itemBuilder: (context, index) {
-                    final draft = drafts[index];
-                    return _DraftCard(
-                      draft: draft,
-                      currencySymbol: currencySymbol,
-                      incomeCategories: auth.effectiveIncomeCategories,
-                      expenseCategories: auth.effectiveExpenseCategories,
-                      onChanged: (next) => _updateDraft(index, next, drafts),
-                    );
-                  },
+                child: RefreshIndicator(
+                  onRefresh: _hydrateFromServer,
+                  child: ListView.builder(
+                    itemCount: drafts.length,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemBuilder: (context, index) {
+                      final draft = drafts[index];
+                      return _DraftCard(
+                        draft: draft,
+                        currencySymbol: currencySymbol,
+                        incomeCategories: auth.effectiveIncomeCategories,
+                        expenseCategories: auth.effectiveExpenseCategories,
+                        onChanged: (next) => _updateDraft(index, next, drafts),
+                      );
+                    },
+                  ),
                 ),
               ),
               SafeArea(

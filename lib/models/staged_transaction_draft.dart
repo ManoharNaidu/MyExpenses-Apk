@@ -108,6 +108,7 @@ class StagedTransactionDraft {
     if (decoded is Map<String, dynamic>) {
       source =
           decoded['transactions'] ??
+          decoded['staging_transactions'] ??
           decoded['data'] ??
           decoded['results'] ??
           [];
