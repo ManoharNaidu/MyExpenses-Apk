@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_provider.dart';
+import '../../core/auth/auth_state.dart';
 import '../../core/constants/currencies.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/theme/theme_provider.dart';
@@ -9,11 +10,28 @@ import 'dashboard_screen.dart';
 import 'history_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_page.dart';
+import 'staged_review_screen.dart';
+import '../../data/staged_draft_repository.dart';
 import '../../data/transaction_repository.dart';
 import '../../widgets/app_feedback_dialog.dart';
 import '../../widgets/add_transaction_modal.dart';
 import '../../core/api/pdf_upload_provider.dart';
 import '../../app/theme.dart';
+
+enum _GuideNextStepAction {
+  dashboard,
+  settings,
+  stagedReview,
+  addTransaction,
+  uploadPdf,
+}
+
+typedef _GuideNextStep = ({
+  IconData icon,
+  String title,
+  String message,
+  _GuideNextStepAction action,
+});
 
 class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
@@ -27,7 +45,12 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
   int index = 0;
   bool _hasCheckedFirstRunGuide = false;
 
-  static const _guideSeenPrefix = 'guide_seen_';
+  static const _guideSeenPrefix = 'guide_full_seen_';
+  static const _guideSeenGlobalKey = 'guide_full_seen_global';
+  static const _legacyGuideSeenPrefix = 'guide_seen_';
+  static const _legacyGuideSeenGlobalKey = 'guide_seen_global';
+  static const _guideNextTipsDatePrefix = 'guide_next_tips_date_';
+  static const _guideNextTipsDateGlobalKey = 'guide_next_tips_date_global';
 
   late final AnimationController _fabController;
   late final Animation<double> _fabScale;
@@ -62,28 +85,241 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     final authState = ref.read(authProvider).state;
     if (!authState.isLoggedIn || !authState.isOnboarded) return;
 
-    // Use a stable key for the guide. userId is preferred.
-    final userKey = (authState.userId ?? authState.userEmail)?.trim();
-    if (userKey == null || userKey.isEmpty) {
-      // If we don't have a stable ID yet, wait a bit and retry once.
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-      return _maybeShowFirstRunGuide();
-    }
+    final userKey = _normalizedGuideUserKey(
+      authState.userId,
+      authState.userEmail,
+    );
+    final storageKey = userKey == null
+        ? _guideSeenGlobalKey
+        : '$_guideSeenPrefix$userKey';
 
     // Now mark as checked so we don't double-trigger if we wait
     _hasCheckedFirstRunGuide = true;
 
-    final storageKey = '$_guideSeenPrefix$userKey';
     final hasSeen = await SecureStorage.readString(storageKey);
+    final hasSeenGlobal = await SecureStorage.readString(_guideSeenGlobalKey);
+    final hasSeenLegacy = await SecureStorage.readString(
+      userKey == null
+          ? _legacyGuideSeenGlobalKey
+          : '$_legacyGuideSeenPrefix$userKey',
+    );
+    final hasSeenLegacyGlobal = await SecureStorage.readString(
+      _legacyGuideSeenGlobalKey,
+    );
 
-    if (!mounted || hasSeen == 'true') return;
+    final fullGuideSeen =
+        hasSeen == 'true' ||
+        hasSeenGlobal == 'true' ||
+        hasSeenLegacy == 'true' ||
+        hasSeenLegacyGlobal == 'true';
+
+    if (!mounted) return;
+    if (fullGuideSeen) {
+      await _maybeShowNextStepGuide(authState, userKey);
+      return;
+    }
 
     await _showFirstRunGuide();
     await SecureStorage.writeString(storageKey, 'true');
+    await SecureStorage.writeString(_guideSeenGlobalKey, 'true');
+  }
+
+  Future<void> _maybeShowNextStepGuide(
+    AuthState authState,
+    String? userKey,
+  ) async {
+    final tipsDateKey = userKey == null
+        ? _guideNextTipsDateGlobalKey
+        : '$_guideNextTipsDatePrefix$userKey';
+    final today = DateTime.now().toIso8601String().split('T').first;
+    final lastShown = await SecureStorage.readString(tipsDateKey);
+    if (lastShown == today) return;
+
+    final recommendations = _buildNextStepRecommendations(authState);
+    if (recommendations.isEmpty) return;
+
+    await _showNextStepGuide(recommendations.take(2).toList());
+    await SecureStorage.writeString(tipsDateKey, today);
+  }
+
+  List<_GuideNextStep> _buildNextStepRecommendations(AuthState authState) {
+    final tips = <_GuideNextStep>[];
+
+    final incomeCategories = authState.effectiveIncomeCategories;
+    final expenseCategories = authState.effectiveExpenseCategories;
+    if (incomeCategories.isEmpty || expenseCategories.isEmpty) {
+      tips.add((
+        icon: Icons.category_rounded,
+        title: 'Complete your categories',
+        message:
+            'Set both income and expense categories so transactions are classified cleanly.',
+        action: _GuideNextStepAction.settings,
+      ));
+    }
+
+    if (TransactionRepository.currentTransactions.isEmpty) {
+      tips.add((
+        icon: Icons.add_chart_rounded,
+        title: 'Add your first transaction',
+        message: 'Start with one manual entry from the + button on Dashboard.',
+        action: _GuideNextStepAction.addTransaction,
+      ));
+    }
+
+    if (StagedDraftRepository.currentDrafts.isNotEmpty) {
+      tips.add((
+        icon: Icons.fact_check_rounded,
+        title: 'Review staged rows',
+        message:
+            '${StagedDraftRepository.currentDrafts.length} staged transaction(s) are waiting for confirmation.',
+        action: _GuideNextStepAction.stagedReview,
+      ));
+    } else {
+      tips.add((
+        icon: Icons.picture_as_pdf_rounded,
+        title: 'Try PDF upload',
+        message:
+            'Upload a bank statement PDF and review extracted rows before confirming.',
+        action: _GuideNextStepAction.uploadPdf,
+      ));
+    }
+
+    return tips;
+  }
+
+  Future<void> _showNextStepGuide(List<_GuideNextStep> tips) async {
+    if (!mounted || tips.isEmpty) return;
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('What to do next'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: tips
+                .map(
+                  (tip) => Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            tip.icon,
+                            color: colorScheme.onPrimaryContainer,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tip.title,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                tip.message,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext);
+                                    _openNextStep(tip.action);
+                                  },
+                                  child: const Text('Open'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Later'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openNextStep(_GuideNextStepAction action) async {
+    if (!mounted) return;
+    switch (action) {
+      case _GuideNextStepAction.dashboard:
+        setState(() => index = 0);
+        return;
+      case _GuideNextStepAction.settings:
+        setState(() => index = 3);
+        return;
+      case _GuideNextStepAction.stagedReview:
+        setState(() => index = 0);
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const StagedReviewScreen()),
+        );
+        return;
+      case _GuideNextStepAction.addTransaction:
+        setState(() => index = 0);
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (_) => AddTransactionModal(onSaved: () {}),
+        );
+        return;
+      case _GuideNextStepAction.uploadPdf:
+        setState(() => index = 0);
+        ref.read(pdfUploadProvider.notifier).pickAndUpload();
+        return;
+    }
+  }
+
+  String? _normalizedGuideUserKey(String? userId, String? userEmail) {
+    final id = userId?.trim();
+    if (id != null && id.isNotEmpty) return id.toLowerCase();
+
+    final email = userEmail?.trim();
+    if (email != null && email.isNotEmpty) return email.toLowerCase();
+
+    return null;
   }
 
   Future<void> _showFirstRunGuide() async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final steps = <({IconData icon, String title, String message, String cta})>[
       (
         icon: Icons.waving_hand_rounded,
@@ -153,7 +389,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
       context: context,
       barrierDismissible: false,
       barrierLabel: 'Guide',
-      barrierColor: Colors.black.withValues(alpha: 0.7),
+      barrierColor: colorScheme.scrim.withValues(alpha: 0.42),
       transitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         return StatefulBuilder(
@@ -161,201 +397,182 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             final step = steps[currentStep];
             final isFirst = currentStep == 0;
             final isLast = currentStep == steps.length - 1;
+            final dialogTheme = Theme.of(dialogContext);
+            final dialogColorScheme = dialogTheme.colorScheme;
 
             return SafeArea(
-              child: Scaffold(
-                backgroundColor: Colors.transparent,
-                body: Stack(
-                  children: [
-                    Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 36, 20, 0),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 540),
+                    child: Material(
+                      color: dialogColorScheme.surface,
+                      elevation: 18,
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: dialogColorScheme.outlineVariant,
+                          ),
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Getting Started • Step ${currentStep + 1}/${steps.length}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Getting Started • Step ${currentStep + 1}/${steps.length}',
+                                    style: dialogTheme.textTheme.titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: dialogColorScheme.onSurface,
+                                        ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Skip'),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 6),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
                                 value: (currentStep + 1) / steps.length,
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.3,
-                                ),
-                                color: AppTheme.accent,
                                 minHeight: 6,
+                                backgroundColor:
+                                    dialogColorScheme.surfaceContainerHighest,
+                                color: dialogColorScheme.primary,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.center,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          transitionBuilder: (child, animation) =>
-                              FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position:
-                                      Tween<Offset>(
-                                        begin: const Offset(0.05, 0),
-                                        end: Offset.zero,
-                                      ).animate(
-                                        CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeOut,
-                                        ),
-                                      ),
-                                  child: child,
-                                ),
-                              ),
-                          child: Container(
-                            key: ValueKey(currentStep),
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                dialogContext,
-                              ).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    step.icon,
-                                    color: Colors.white,
-                                    size: 26,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        step.title,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        step.message,
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.88,
+                            const SizedBox(height: 14),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 260),
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position:
+                                          Tween<Offset>(
+                                            begin: const Offset(0.05, 0),
+                                            end: Offset.zero,
+                                          ).animate(
+                                            CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.easeOut,
+                                            ),
                                           ),
-                                          height: 1.5,
-                                        ),
+                                      child: child,
+                                    ),
+                                  ),
+                              child: Container(
+                                key: ValueKey(currentStep),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: dialogColorScheme.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            dialogColorScheme.primaryContainer,
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                    ],
+                                      child: Icon(
+                                        step.icon,
+                                        color: dialogColorScheme
+                                            .onPrimaryContainer,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            step.title,
+                                            style: dialogTheme
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w800,
+                                                  color: dialogColorScheme
+                                                      .onSurface,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            step.message,
+                                            style: dialogTheme
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  height: 1.45,
+                                                  color: dialogColorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                if (!isFirst)
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () =>
+                                          setState(() => currentStep--),
+                                      child: const Text('Back'),
+                                    ),
+                                  ),
+                                if (!isFirst) const SizedBox(width: 10),
+                                Expanded(
+                                  flex: 2,
+                                  child: FilledButton(
+                                    onPressed: () {
+                                      if (isLast) {
+                                        Navigator.pop(dialogContext);
+                                        return;
+                                      }
+                                      setState(() => currentStep++);
+                                    },
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppTheme.accent,
+                                      foregroundColor: AppTheme.textDark,
+                                    ),
+                                    child: Text(
+                                      step.cta,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                        child: Row(
-                          children: [
-                            if (!isFirst)
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () =>
-                                      setState(() => currentStep--),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    side: const BorderSide(
-                                      color: Colors.white54,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text('Back'),
-                                ),
-                              ),
-                            if (!isFirst) const SizedBox(width: 10),
-                            Expanded(
-                              flex: 2,
-                              child: FilledButton(
-                                onPressed: () {
-                                  if (isLast) {
-                                    Navigator.pop(dialogContext);
-                                    return;
-                                  }
-                                  setState(() => currentStep++);
-                                },
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppTheme.accent,
-                                  foregroundColor: AppTheme.textDark,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  step.cta,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    Positioned(
-                      right: 12,
-                      top: 8,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text(
-                          'Skip',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );
@@ -670,17 +887,17 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
   }
 
   void _listenToPdfUploads() {
-    ref.listen(pdfUploadProvider, (previous, next) {
+    ref.listen(pdfUploadProvider, (previous, next) async {
       if (next.isUploading) return;
       if (next.error != null) {
-        showAppFeedbackDialog(
+        await showAppFeedbackDialog(
           context,
           title: 'Upload Error',
           message: next.error!,
           type: AppFeedbackType.error,
         );
       } else if (next.lastExtracted != null) {
-        showAppFeedbackDialog(
+        await showAppFeedbackDialog(
           context,
           title: 'Upload Successful',
           message: next.lastExtracted!.isEmpty
@@ -690,6 +907,14 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
               ? AppFeedbackType.error
               : AppFeedbackType.success,
         );
+
+        if (!mounted) return;
+        if (next.lastExtracted!.isNotEmpty) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const StagedReviewScreen()),
+          );
+        }
       }
     });
   }

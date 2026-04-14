@@ -371,84 +371,108 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 10),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final size = (constraints.maxWidth * 0.65).clamp(72.0, 100.0);
-                return SizedBox(
-                  height: size,
-                  child: Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          height: size,
-                          width: size,
-                          child: CircularProgressIndicator(
-                            value: progress,
-                            strokeWidth: 9,
-                            backgroundColor: Colors.black.withValues(
-                              alpha: 0.08,
-                            ),
-                            valueColor: AlwaysStoppedAnimation<Color>(color),
-                          ),
-                        ),
-                        if (gradient != null)
-                          SizedBox(
-                            height: size,
-                            width: size,
-                            child: ShaderMask(
-                              shaderCallback: (rect) =>
-                                  gradient.createShader(rect),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 170),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = (constraints.maxWidth * 0.72).clamp(
+                      78.0,
+                      104.0,
+                    );
+                    return SizedBox(
+                      height: size,
+                      width: size,
+                      child: Center(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              height: size,
+                              width: size,
                               child: CircularProgressIndicator(
                                 value: progress,
                                 strokeWidth: 9,
-                                backgroundColor: Colors.transparent,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                                backgroundColor: Colors.black.withValues(
+                                  alpha: 0.08,
+                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  color,
                                 ),
                               ),
                             ),
-                          ),
-                        FittedBox(
-                          child: Text(
-                            '$symbol${value.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                            if (gradient != null)
+                              SizedBox(
+                                height: size,
+                                width: size,
+                                child: ShaderMask(
+                                  shaderCallback: (rect) =>
+                                      gradient.createShader(rect),
+                                  child: CircularProgressIndicator(
+                                    value: progress,
+                                    strokeWidth: 9,
+                                    backgroundColor: Colors.transparent,
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            FittedBox(
+                              child: Text(
+                                '$symbol${value.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  isPositiveTrend ? Icons.arrow_upward : Icons.arrow_downward,
-                  size: 14,
-                  color: isPositiveTrend ? Colors.green : Colors.red,
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  isPositiveTrend ? 'up' : 'down',
-                  style: TextStyle(
-                    color: isPositiveTrend ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPositiveTrend
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                      color: isPositiveTrend ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isPositiveTrend ? 'up' : 'down',
+                      style: TextStyle(
+                        color: isPositiveTrend ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -759,41 +783,53 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    height: 200,
-                    child: PieChart(
-                      PieChartData(
-                        centerSpaceRadius: 40,
-                        pieTouchData: PieTouchData(
-                          touchCallback: (event, response) {
-                            final index =
-                                response?.touchedSection?.touchedSectionIndex;
-                            if (index != null) {
-                              setState(() => _touchedCategoryIndex = index);
-                            }
-                          },
+                  if (top.isEmpty || totalAmount <= 0)
+                    SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: Text(
+                          'No expense categories for this month yet.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        sections: [
-                          for (int i = 0; i < top.length; i++)
-                            PieChartSectionData(
-                              value: top[i].value,
-                              title: totalAmount <= 0
-                                  ? top[i].key
-                                  : '${top[i].key}\n${(top[i].value / totalAmount * 100).toStringAsFixed(0)}%',
-                              radius: _touchedCategoryIndex == i ? 74 : 64,
-                              color:
-                                  _categoryColors[top[i].key] ??
-                                  Colors.primaries[i % Colors.primaries.length],
-                              titleStyle: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 200,
+                      child: PieChart(
+                        PieChartData(
+                          centerSpaceRadius: 40,
+                          pieTouchData: PieTouchData(
+                            touchCallback: (event, response) {
+                              final index =
+                                  response?.touchedSection?.touchedSectionIndex;
+                              if (index != null) {
+                                setState(() => _touchedCategoryIndex = index);
+                              }
+                            },
+                          ),
+                          sections: [
+                            for (int i = 0; i < top.length; i++)
+                              PieChartSectionData(
+                                value: top[i].value,
+                                title:
+                                    '${top[i].key}\n${(top[i].value / totalAmount * 100).toStringAsFixed(0)}%',
+                                radius: _touchedCategoryIndex == i ? 74 : 64,
+                                color:
+                                    _categoryColors[top[i].key] ??
+                                    Colors.primaries[i %
+                                        Colors.primaries.length],
+                                titleStyle: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

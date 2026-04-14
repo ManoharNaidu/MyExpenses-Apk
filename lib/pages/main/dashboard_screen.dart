@@ -8,10 +8,12 @@ import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/constants/currencies.dart';
 import '../../data/category_budget_repository.dart';
+import '../../data/staged_draft_repository.dart';
 import '../../data/transaction_repository.dart';
 import '../../models/transaction_model.dart';
 import '../../models/category_budget.dart';
 import '../../pages/main/budget_management_screen.dart';
+import '../../pages/main/staged_review_screen.dart';
 import '../../widgets/dashboard_budget_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../utils/category_icons.dart';
@@ -155,6 +157,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       );
                     },
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              StreamBuilder<int>(
+                stream: StagedDraftRepository.getDraftsStream().map(
+                  (drafts) => drafts.length,
+                ),
+                initialData: StagedDraftRepository.currentDrafts.length,
+                builder: (context, stagingSnapshot) {
+                  final stagedCount = stagingSnapshot.data ?? 0;
+                  return Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.deepOrange.withValues(
+                          alpha: 0.15,
+                        ),
+                        child: const Icon(
+                          Icons.fact_check_rounded,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                      title: const Text('Review staged transactions'),
+                      subtitle: Text(
+                        stagedCount == 0
+                            ? 'Upload a bank PDF to stage rows for review.'
+                            : '$stagedCount row(s) waiting for review and confirmation.',
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StagedReviewScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),
