@@ -11,11 +11,7 @@ class PdfUploadState {
   final String? error;
   final List<StagedTransactionDraft>? lastExtracted;
 
-  PdfUploadState({
-    this.isUploading = false,
-    this.error,
-    this.lastExtracted,
-  });
+  PdfUploadState({this.isUploading = false, this.error, this.lastExtracted});
 
   PdfUploadState copyWith({
     bool? isUploading,
@@ -35,7 +31,10 @@ class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
 
   Future<List<StagedTransactionDraft>> _loadStagedDraftsFromServer() async {
     final res = await ApiClient.get('/staging');
-    ApiClient.ensureSuccess(res, fallbackMessage: 'Failed to load staged transactions');
+    ApiClient.ensureSuccess(
+      res,
+      fallbackMessage: 'Failed to load staged transactions',
+    );
 
     final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
     return StagedTransactionDraft.fromUploadResponse(decoded);
@@ -68,7 +67,8 @@ class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
 
       final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
       final drafts = StagedTransactionDraft.fromUploadResponse(decoded);
-      final needsFallback = drafts.isEmpty ||
+      final needsFallback =
+          drafts.isEmpty ||
           drafts.every((draft) => (draft.stagingId ?? '').trim().isEmpty);
 
       final resolvedDrafts = needsFallback
@@ -79,16 +79,14 @@ class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
         await StagedDraftRepository.upsertDrafts(resolvedDrafts);
       }
 
-      state = state.copyWith(
-        isUploading: false,
-        lastExtracted: resolvedDrafts,
-      );
+      state = state.copyWith(isUploading: false, lastExtracted: resolvedDrafts);
     } catch (e) {
       state = state.copyWith(isUploading: false, error: e.toString());
     }
   }
 }
 
-final pdfUploadProvider = StateNotifierProvider<PdfUploadNotifier, PdfUploadState>((ref) {
-  return PdfUploadNotifier();
-});
+final pdfUploadProvider =
+    StateNotifierProvider<PdfUploadNotifier, PdfUploadState>((ref) {
+      return PdfUploadNotifier();
+    });
