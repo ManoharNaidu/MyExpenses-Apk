@@ -8,6 +8,9 @@ linter:
     use_super_parameters: true
     prefer_const_constructors: true
     prefer_const_declarations: true
+    prefer_final_locals: true
+    avoid_redundant_argument_values: true
+    unnecessary_lambdas: true
     unnecessary_null_checks: true
     avoid_unnecessary_containers: true
     sized_box_for_whitespace: true

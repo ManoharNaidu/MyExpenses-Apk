@@ -22,7 +22,7 @@ class StagedTransactionDraft {
     this.stagedCategory,
     required this.amount,
     this.description,
-    this.accepted = true,
+    this.accepted = false,
   });
 
   StagedTransactionDraft copyWith({
@@ -98,7 +98,7 @@ class StagedTransactionDraft {
       stagedCategory: json['staged_category']?.toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       description: json['description']?.toString(),
-      accepted: (json['accepted'] as bool?) ?? true,
+      accepted: _parseAccepted(json),
     );
   }
 
@@ -158,11 +158,13 @@ class StagedTransactionDraft {
                   json['predicted_category'] ??
                   'Misc')
               .toString(),
-      stagedType: null,
-      stagedCategory: null,
       amount: amount,
       description: (json['description'] ?? json['narration'])?.toString(),
-      accepted: (json['accepted'] as bool?) ?? true,
+      accepted: _parseAccepted(json),
     );
+  }
+
+  static bool _parseAccepted(Map<String, dynamic> json) {
+    return json['accepted'] as bool? ?? false;
   }
 }

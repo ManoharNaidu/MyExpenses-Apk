@@ -370,7 +370,6 @@ class _DraftCard extends StatelessWidget {
                       onChanged(
                         draft.copyWith(
                           stagedType: picked,
-                          stagedCategory: null,
                           clearStagedCategory: true,
                         ),
                       );
@@ -401,6 +400,7 @@ class _DraftCard extends StatelessWidget {
                   draft.copyWith(
                     stagedType: selectedType,
                     stagedCategory: value,
+                    accepted: true,
                   ),
                 );
               },
@@ -412,7 +412,8 @@ class _DraftCard extends StatelessWidget {
               title: const Text('Include this row in confirmation'),
               controlAffinity: ListTileControlAffinity.leading,
               onChanged: (value) {
-                onChanged(draft.copyWith(accepted: value ?? true));
+                if (value == null) return;
+                onChanged(draft.copyWith(accepted: value));
               },
             ),
           ],

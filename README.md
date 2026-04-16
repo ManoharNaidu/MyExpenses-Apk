@@ -472,6 +472,7 @@ We welcome contributions! Here's how to get involved:
 ### Code Guidelines
 - Follow Dart style conventions ([Effective Dart](https://dart.dev/guides/language/effective-dart))
 - Format code: `flutter format .`
+- For generated code, run `flutter pub run build_runner build --delete-conflicting-outputs` or `flutter pub run build_runner watch --delete-conflicting-outputs`
 - Run linter: `flutter analyze`
 - Add comments for complex logic
 - Write descriptive commit messages
