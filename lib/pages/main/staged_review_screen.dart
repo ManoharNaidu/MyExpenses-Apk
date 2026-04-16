@@ -47,7 +47,7 @@ class _StagedReviewScreenState extends ConsumerState<StagedReviewScreen> {
       );
       final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
       final drafts = StagedTransactionDraft.fromUploadResponse(decoded);
-      await StagedDraftRepository.saveDrafts(drafts);
+      await StagedDraftRepository.mergeServerDrafts(drafts);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadError = e.toString());

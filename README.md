@@ -106,21 +106,22 @@ This command reads the `pubspec.yaml` file and downloads all required packages:
 
 ### 4. Configure Environment Variables
 
-Create a `.env` file in the project root directory:
+Use the included templates in the project root:
+
+- `.env.dev` for development
+- `.env.prod` for production builds
+
+Set at least this value in both files:
 
 ```bash
-# .env
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_ANON_KEY=your_anon_key_here
+API_URL=https://your-backend-link/api/v1
 ```
 
-**Example:**
-```
-SUPABASE_URL=https://example.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+At runtime, the app loads environment files in this order:
 
-> ⚠️ **Important**: Never commit the `.env` file to version control. Add it to `.gitignore`.
+1. `.env.<APP_FLAVOR>` (for example `.env.dev` or `.env.prod`)
+2. `.env`
+3. `.env.example`
 
 ### 5. Generate Launcher Icons (Optional)
 
@@ -150,6 +151,12 @@ flutter run -d <device_id>
 ```
 
 ### Platform-Specific Execution
+
+**Run with flavor:**
+```bash
+flutter run --dart-define=APP_FLAVOR=dev
+flutter run --dart-define=APP_FLAVOR=prod
+```
 
 **Android:**
 ```bash
@@ -203,6 +210,9 @@ Hot reload updates code without losing application state, making development fas
 ```bash
 # Build APK
 flutter build apk --release
+
+# Build APK with flavor + endpoint override
+flutter build apk --release --dart-define=APP_FLAVOR=prod --dart-define=API_URL=https://your-backend-link/api/v1
 
 # Build App Bundle (for Google Play Store)
 flutter build appbundle --release

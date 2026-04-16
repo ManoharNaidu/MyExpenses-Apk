@@ -59,5 +59,7 @@ flutter:
 
   assets:
     - assets/icon/
-    - .env
+    - .env.dev
+    - .env.prod
+    - .env.example
 

@@ -38,6 +38,12 @@ parseJson(String text) {
 class ApiClient {
   static final Dio _dio = _createDio();
   static String get _baseUrl {
+    final defineUrl = const String.fromEnvironment('API_URL').trim();
+    if (defineUrl.isNotEmpty) {
+      debugPrint('Base URL (dart-define): $defineUrl');
+      return defineUrl;
+    }
+
     final envUrl = dotenv.get('API_URL', fallback: '').trim();
 
     // // In debug mode, we default to localhost unless explicitly overridden.

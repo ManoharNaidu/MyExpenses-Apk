@@ -10,14 +10,33 @@ import 'core/theme/theme_provider.dart';
 import 'pages/router/root_router.dart';
 import 'services/weekly_digest_service.dart';
 
+const _appFlavor = String.fromEnvironment('APP_FLAVOR', defaultValue: 'dev');
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
+  await _loadEnv();
   tz.initializeTimeZones();
 
   runApp(const ProviderScope(child: MyExpensesApp()));
   unawaited(NotificationService.initialize());
   unawaited(WeeklyDigestService.initialize());
+}
+
+Future<void> _loadEnv() async {
+  final candidates = <String>[
+    '.env.$_appFlavor',
+    '.env',
+    '.env.example',
+  ];
+
+  for (final fileName in candidates) {
+    try {
+      await dotenv.load(fileName: fileName);
+      return;
+    } catch (_) {
+      // Keep trying fallback env files.
+    }
+  }
 }
 
 class MyExpensesApp extends ConsumerWidget {

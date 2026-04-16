@@ -83,6 +83,67 @@ class StagedDraftRepository {
     await _saveToCache();
   }
 
+  static Future<void> mergeServerDrafts(
+    List<StagedTransactionDraft> serverDrafts,
+  ) async {
+    final existingById = <String, StagedTransactionDraft>{
+      for (final draft in _drafts)
+        if ((draft.stagingId ?? '').trim().isNotEmpty) draft.stagingId!: draft,
+    };
+
+    final merged = <StagedTransactionDraft>[];
+    final seenIds = <String>{};
+
+    for (final serverDraft in serverDrafts) {
+      final id = (serverDraft.stagingId ?? '').trim();
+      if (id.isEmpty) {
+        merged.add(serverDraft);
+        continue;
+      }
+
+      seenIds.add(id);
+      final existing = existingById[id];
+      if (existing == null) {
+        merged.add(serverDraft);
+        continue;
+      }
+
+      merged.add(_mergeServerAndLocal(serverDraft, existing));
+    }
+
+    for (final localDraft in _drafts) {
+      final id = (localDraft.stagingId ?? '').trim();
+      if (id.isNotEmpty && !seenIds.contains(id)) {
+        merged.add(localDraft);
+      }
+    }
+
+    _drafts
+      ..clear()
+      ..addAll(merged);
+    _emitCurrent();
+    await _saveToCache();
+  }
+
+  static StagedTransactionDraft _mergeServerAndLocal(
+    StagedTransactionDraft server,
+    StagedTransactionDraft local,
+  ) {
+    final hasLocalCategory = (local.stagedCategory ?? '').trim().isNotEmpty;
+
+    return StagedTransactionDraft(
+      stagingId: server.stagingId ?? local.stagingId,
+      date: server.date,
+      predictedType: server.predictedType,
+      predictedCategory: server.predictedCategory,
+      stagedType: local.stagedType ?? server.stagedType,
+      stagedCategory: hasLocalCategory ? local.stagedCategory : server.stagedCategory,
+      amount: server.amount,
+      description: server.description,
+      accepted: local.accepted,
+    );
+  }
+
   static Future<void> removeByStagingIds(Set<String> stagingIds) async {
     if (stagingIds.isEmpty) return;
 

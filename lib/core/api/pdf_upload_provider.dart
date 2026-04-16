@@ -53,17 +53,16 @@ class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
     final filePath = kIsWeb ? null : file.path;
     final fileBytes = file.bytes;
 
-    state = state.copyWith(isUploading: true, error: null);
+    state = state.copyWith(isUploading: true);
 
     try {
       final res = await ApiClient.uploadFile(
         '/upload-pdf',
-        fieldName: 'file',
         filePath: filePath,
         fileBytes: fileBytes,
         fileName: file.name,
       );
-      ApiClient.ensureSuccess(res, fallbackMessage: 'Upload failed');
+      ApiClient.ensureSuccess(res);
 
       final decoded = res.body.isNotEmpty ? jsonDecode(res.body) : [];
       final drafts = StagedTransactionDraft.fromUploadResponse(decoded);
@@ -76,7 +75,7 @@ class PdfUploadNotifier extends StateNotifier<PdfUploadState> {
           : drafts;
 
       if (resolvedDrafts.isNotEmpty) {
-        await StagedDraftRepository.upsertDrafts(resolvedDrafts);
+        await StagedDraftRepository.mergeServerDrafts(resolvedDrafts);
       }
 
       state = state.copyWith(isUploading: false, lastExtracted: resolvedDrafts);
