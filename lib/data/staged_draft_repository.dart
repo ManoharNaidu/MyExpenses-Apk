@@ -64,7 +64,9 @@ class StagedDraftRepository {
         if ((d.stagingId ?? '').isNotEmpty) d.stagingId!: d,
     };
 
-    final withoutId = _drafts.where((d) => (d.stagingId ?? '').isEmpty).toList();
+    final withoutId = _drafts
+        .where((d) => (d.stagingId ?? '').isEmpty)
+        .toList();
 
     for (final draft in drafts) {
       final id = draft.stagingId;
@@ -137,7 +139,9 @@ class StagedDraftRepository {
       predictedType: server.predictedType,
       predictedCategory: server.predictedCategory,
       stagedType: local.stagedType ?? server.stagedType,
-      stagedCategory: hasLocalCategory ? local.stagedCategory : server.stagedCategory,
+      stagedCategory: hasLocalCategory
+          ? local.stagedCategory
+          : server.stagedCategory,
       amount: server.amount,
       description: server.description,
       accepted: local.accepted,

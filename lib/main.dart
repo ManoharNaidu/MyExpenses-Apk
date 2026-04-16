@@ -10,8 +10,6 @@ import 'core/theme/theme_provider.dart';
 import 'pages/router/root_router.dart';
 import 'services/weekly_digest_service.dart';
 
-const _appFlavor = String.fromEnvironment('APP_FLAVOR', defaultValue: 'dev');
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _loadEnv();
@@ -23,11 +21,7 @@ void main() async {
 }
 
 Future<void> _loadEnv() async {
-  final candidates = <String>[
-    '.env.$_appFlavor',
-    '.env',
-    '.env.example',
-  ];
+  final candidates = <String>['.env.dev', '.env', '.env.example'];
 
   for (final fileName in candidates) {
     try {

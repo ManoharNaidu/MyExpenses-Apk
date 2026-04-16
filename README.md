@@ -109,7 +109,7 @@ This command reads the `pubspec.yaml` file and downloads all required packages:
 Use the included templates in the project root:
 
 - `.env.dev` for development
-- `.env.prod` for production builds
+- `.env.example` as a reference template
 
 Set at least this value in both files:
 
@@ -119,7 +119,7 @@ API_URL=https://your-backend-link/api/v1
 
 At runtime, the app loads environment files in this order:
 
-1. `.env.<APP_FLAVOR>` (for example `.env.dev` or `.env.prod`)
+1. `.env.dev`
 2. `.env`
 3. `.env.example`
 
@@ -151,12 +151,6 @@ flutter run -d <device_id>
 ```
 
 ### Platform-Specific Execution
-
-**Run with flavor:**
-```bash
-flutter run --dart-define=APP_FLAVOR=dev
-flutter run --dart-define=APP_FLAVOR=prod
-```
 
 **Android:**
 ```bash
@@ -211,8 +205,8 @@ Hot reload updates code without losing application state, making development fas
 # Build APK
 flutter build apk --release
 
-# Build APK with flavor + endpoint override
-flutter build apk --release --dart-define=APP_FLAVOR=prod --dart-define=API_URL=https://your-backend-link/api/v1
+# Build APK with endpoint override
+flutter build apk --release --dart-define=API_URL=https://your-backend-link/api/v1
 
 # Build App Bundle (for Google Play Store)
 flutter build appbundle --release
